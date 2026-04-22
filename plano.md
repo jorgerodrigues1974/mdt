@@ -8,6 +8,7 @@ Este documento serve como o Roadmap oficial para o projeto MDT Lite. Aqui regist
 - [x] Sincronizar app ArcGIS Survey123 (Instalação Direta).
 - [x] Refinar interface: Opção "Todas" no final da barra.
 - [x] Integrar lote de **Scanners Epson** e **Antivírus Endpoint**.
+- [x] Correção técnica: Instaladores Autodesk (Design Review e TrueView 2027).
 - [ ] Implementar sistema de logs de auditoria detalhado.
 - [ ] Refinar a interface de utilizador (UI) para um estilo mais premium (Microsoft Fluent Design).
 

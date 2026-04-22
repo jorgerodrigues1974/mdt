@@ -165,7 +165,7 @@
       "category": "pro",
       "description": "Visualizador de arquivos DWF e markups.",
       "type": "local",
-      "localFile": "ADR_2018_en_win_db.sfx.exe",
+      "localFile": "ADR_2018_pt-BR_win_db.sfx.exe",
       "silentArgs": "/q",
       "iconUrl": "https://logo.clearbit.com/autodesk.com"
     },
