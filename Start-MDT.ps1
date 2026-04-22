@@ -20,15 +20,22 @@ $scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Get-Location }
 $installersPath = Join-Path $scriptRoot "installers"
 $port = 8070
 
-# Detetar IP Local (Filtrando interfaces virtuais e preferindo fisicas)
+# Detetar IP Local (Priorizando a placa com rota predefinida / Gateway para evitar IPs virtuais)
 $Global:LocalIP = try {
-    $ips = Get-NetIPAddress -AddressFamily IPv4 | Where-Object {
-        $_.InterfaceAlias -notlike "*Loopback*" -and
-        $_.InterfaceAlias -notlike "*vEthernet*" -and
-        $_.InterfaceAlias -notlike "*VMware*" -and
-        $_.IPv4Address -notlike "169.254.*"
-    } | Sort-Object InterfaceAlias
-    if ($ips) { $ips[0].IPv4Address } else { "127.0.0.1" }
+    $route = Get-NetRoute -DestinationPrefix 0.0.0.0/0 -ErrorAction SilentlyContinue | Sort-Object RouteMetric | Select-Object -First 1
+    if ($route) {
+        $foundIP = (Get-NetIPAddress -InterfaceIndex $route.InterfaceIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue).IPv4Address
+        if ($foundIP) { $foundIP } else { "127.0.0.1" }
+    } else {
+        # Fallback caso não exista gateway (ex: rede isolada)
+        $ips = Get-NetIPAddress -AddressFamily IPv4 | Where-Object {
+            $_.InterfaceAlias -notlike "*Loopback*" -and
+            $_.InterfaceAlias -notlike "*vEthernet*" -and
+            $_.InterfaceAlias -notlike "*VMware*" -and
+            $_.IPv4Address -notlike "169.254.*"
+        } | Sort-Object InterfaceAlias
+        if ($ips) { $ips[0].IPv4Address } else { "127.0.0.1" }
+    }
 } catch { "127.0.0.1" }
 
 # Deteção de Arquitetura do Sistema

@@ -2,7 +2,11 @@
 
 Todas as alterações significativas serão registadas neste documento para manter um histórico transparente e profissional.
 
-## [v1.2.1] - 2026-04-22 (Atual)
+## [v1.2.2] - 2026-04-22 (Atual)
+### Corrigido
+- **Rede**: Implementada lógica robusta de deteção de IP baseada na tabela de rotas do Windows, garantindo que o IP de partilha corresponde à placa com acesso à rede/gateway (evitando IPs virtuais de VirtualBox/VMware).
+
+## [v1.2.1] - 2026-04-22
 ### Corrigido
 - **Design Review**: Corrigido o nome do ficheiro para a versão Portuguesa (`pt-BR`).
 - **DWG TrueView 2027**: Verificada a integridade da pasta e do ficheiro `Setup.exe`.
