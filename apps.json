@@ -1,0 +1,171 @@
+{
+  "categories": [
+    { "id": "browsers", "name": "Navegadores", "icon": "🌐", "color": "#3b82f6" },
+    { "id": "utilities", "name": "Utilitários", "icon": "🛠️", "color": "#f59e0b" },
+    { "id": "office", "name": "Office & PDF", "icon": "📄", "color": "#10b981" },
+    { "id": "pro", "name": "Profissional & Design", "icon": "📐", "color": "#8b5cf6" },
+    { "id": "gov", "name": "Governo & Autenticação", "icon": "⚖️", "color": "#ef4444" }
+  ],
+  "apps": [
+    {
+      "id": "Google.Chrome",
+      "name": "Google Chrome",
+      "category": "browsers",
+      "description": "Navegador rápido e seguro da Google.",
+      "type": "local",
+      "localFile": "ChromeSetup.exe",
+      "silentArgs": "/silent /install",
+      "iconUrl": "https://logo.clearbit.com/google.com"
+    },
+    {
+      "id": "Mozilla.Firefox",
+      "name": "Mozilla Firefox",
+      "category": "browsers",
+      "description": "Navegador focado em privacidade.",
+      "type": "local",
+      "localFile": "FirefoxSetup.exe",
+      "silentArgs": "-ms",
+      "iconUrl": "https://logo.clearbit.com/mozilla.org"
+    },
+    {
+      "id": "RARLab.WinRAR",
+      "name": "WinRAR",
+      "category": "utilities",
+      "description": "Compressor e descompressor de arquivos.",
+      "type": "local",
+      "localFile": "winrar-x64-720br.exe",
+      "silentArgs": "/S",
+      "iconUrl": "https://logo.clearbit.com/rarlab.com"
+    },
+    {
+      "id": "7zip.7zip",
+      "name": "7-Zip",
+      "category": "utilities",
+      "description": "Alternativa open-source para compressão.",
+      "type": "local",
+      "localFile": "7z2600-x64.exe",
+      "silentArgs": "/S",
+      "iconUrl": "https://logo.clearbit.com/7-zip.org"
+    },
+    {
+      "id": "VideoLAN.VLC",
+      "name": "VLC Media Player",
+      "category": "utilities",
+      "description": "Reprodutor multimédia universal.",
+      "type": "local",
+      "localFile": "vlc-3.0.23-win64.exe",
+      "silentArgs": "/S",
+      "iconUrl": "https://logo.clearbit.com/videolan.org"
+    },
+    {
+      "id": "Zoom.Zoom",
+      "name": "Zoom Workplace",
+      "category": "utilities",
+      "description": "Plataforma de videoconferência corporativa.",
+      "type": "local",
+      "localFile": "ZoomInstallerFull.exe",
+      "silentArgs": "/silent",
+      "iconUrl": "https://logo.clearbit.com/zoom.us"
+    },
+    {
+      "id": "supremo.remote",
+      "name": "Supremo Remote",
+      "category": "utilities",
+      "description": "Software de Controlo Remoto.",
+      "type": "local",
+      "localFile": "Supremo.exe",
+      "silentArgs": "/S",
+      "iconUrl": "https://logo.clearbit.com/supremocontrol.com"
+    },
+    {
+      "id": "Adobe.Acrobat.Reader.64-bit",
+      "name": "Adobe Reader",
+      "category": "office",
+      "description": "Leitor de PDF padrão da Adobe.",
+      "type": "local",
+      "localFile": "Reader_br_install.exe",
+      "silentArgs": "/sAll /rs",
+      "iconUrl": "https://logo.clearbit.com/adobe.com"
+    },
+    {
+      "id": "geeksoftwareGmbH.PDF24Creator",
+      "name": "PDF24 Creator",
+      "category": "office",
+      "description": "Conjunto de ferramentas PDF completo.",
+      "type": "local",
+      "localFile": "pdf24-creator-11.30.0-x64.exe",
+      "silentArgs": "/S",
+      "iconUrl": "https://logo.clearbit.com/pdf24.org"
+    },
+    {
+      "id": "office2016",
+      "name": "Microsoft Office 2016",
+      "category": "office",
+      "description": "Instalação Office2016.",
+      "type": "local",
+      "localFile": "OfficeSetup2016.exe",
+      "silentArgs": "/configure configuracao.xml",
+      "iconUrl": "https://logo.clearbit.com/office.com"
+    },
+    {
+      "id": "Google.EarthPro",
+      "name": "Google Earth Pro",
+      "category": "pro",
+      "description": "Exploração do mundo em 3D.",
+      "type": "local",
+      "localFile": "GoogleEarthProSetup.exe",
+      "silentArgs": "/S",
+      "iconUrl": "https://logo.clearbit.com/earth.google.com"
+    },
+    {
+      "id": "Autodesk.DesignReview",
+      "name": "Design Review",
+      "category": "pro",
+      "description": "Visualizador de arquivos DWF e markups.",
+      "type": "local",
+      "localFile": "ADR_2018_en_win_db.sfx.exe",
+      "silentArgs": "/q",
+      "iconUrl": "https://logo.clearbit.com/autodesk.com"
+    },
+    {
+      "id": "Microsoft.PowerBI",
+      "name": "Power BI Desktop",
+      "category": "pro",
+      "description": "Ferramenta de análise de negócios.",
+      "type": "local",
+      "localFile": "PBIDesktopSetup_x64.exe",
+      "silentArgs": "/silent -norestart",
+      "iconUrl": "https://logo.clearbit.com/microsoft.com"
+    },
+    {
+      "id": "ama.autenticacaogov",
+      "name": "Autenticação.gov",
+      "category": "gov",
+      "description": "Cartão de Cidadão e Chave Móvel Digital.",
+      "type": "local",
+      "localFile": "Autenticacao.gov_Win_x64_signed.msi",
+      "silentArgs": "/S",
+      "iconUrl": "https://logo.clearbit.com/autenticacao.gov.pt"
+    },
+    {
+      "id": "ama.pluginautenticacao",
+      "name": "Plugin GOV",
+      "category": "gov",
+      "description": "Plugin para navegadores.",
+      "type": "local",
+      "localFile": "Instalador plugin Autenticacao.Gov.msi",
+      "silentArgs": "/S",
+      "iconUrl": "https://logo.clearbit.com/autenticacao.gov.pt"
+    },
+    {
+      "id": "autodesk.dwgtrueview",
+      "name": "DWG TrueView 2027",
+      "category": "pro",
+      "description": "Visualizador oficial da Autodesk para DWG.",
+      "type": "local",
+      "localFile": "DWG TrueView 2027\\Setup.exe",
+      "silentArgs": "-q",
+      "iconUrl": "https://logo.clearbit.com/autodesk.com"
+    }
+  ]
+}

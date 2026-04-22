@@ -1,0 +1,26 @@
+# MDT Lite - Git Ignore
+
+# Installers and heavy assets
+installers/
+installers_backup/
+assets/
+
+# Backups and temporary files
+backups/
+temp_sync/
+*_backup.js
+*_backup.html
+*_backup.css
+app_backup.js
+index_backup.html
+style_backup.css
+
+# Audit and logs
+auditoria/
+Acesso/
+
+# System files
+.DS_Store
+Thumbs.db
+node_modules/
+package-lock.json

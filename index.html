@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MDT Lite | Modern App Provisioning</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="dark">
+    <div class="app-container">
+        <header>
+            <div class="logo">
+                <span class="logo-icon">🚀</span>
+                <h1 style="font-family: 'Outfit', sans-serif;">MDT <span style="font-style: italic; color: var(--primary-color);">Servicedesk</span></h1>
+            </div>
+            <div class="search-bar" style="margin: 0 1rem; flex-grow: 1; max-width: 350px;">
+                <input type="text" id="appSearch" class="search-box" placeholder="Pesquisar ferramentas..." style="width: 100%;">
+                <span class="search-icon" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%);">🔍</span>
+            </div>
+            <div class="header-actions">
+                <div class="status-badge" id="serverStatusBadge">
+                    <span class="status-dot" id="serverStatusDot"></span>
+                    <span id="serverStatusText">Verificando...</span>
+                </div>
+                <div class="time-widget" id="timeWidget">
+                    <div class="time-greeting" id="timeGreeting">Bom dia,</div>
+                    <div class="time-clock" id="timeClock">00:00</div>
+                </div>
+            </div>
+        </header>
+
+        <main>
+                <!-- Ferramentas de Sistema -->
+                <div class="system-tools-bar">
+                    <div class="tool-card" id="upgradeCard">
+                        <div class="tool-wrapper">
+                            <div class="tool-main-action" id="upgradeAllBtn">
+                                <div class="tool-icon">🔄</div>
+                                <div class="tool-content">
+                                    <h3>Upgrade All Apps</h3>
+                                    <p>Atualiza automaticamente todos os programas via Winget.</p>
+                                </div>
+                            </div>
+                            <div class="tool-divider"></div>
+                            <div class="tool-settings">
+                                <span class="settings-label">ALVO:</span>
+                                <div class="mode-toggle" id="upgradeModeToggle">
+                                    <button class="toggle-btn active" data-mode="local">ESTE PC</button>
+                                    <button class="toggle-btn" data-mode="remote">REDE</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tool-card" id="libraryBtn">
+                        <div class="tool-wrapper">
+                            <div class="tool-main-action">
+                                <div class="tool-icon">📚</div>
+                                <div class="tool-content">
+                                    <h3>Gerir Biblioteca</h3>
+                                    <p>Verifique e atualize os seus instaladores locais.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Barra de Categorias -->
+                <nav class="category-tabs" id="categoryNav">
+                    <!-- Categories will be injected here -->
+                </nav>
+
+                <div class="apps-grid" id="appsGrid">
+                    <!-- Apps will be injected here -->
+                </div>
+
+                <!-- Server Offline Warning -->
+                <div id="serverOfflineWarning" class="offline-warning" style="display: none;">
+                    <div class="warning-content">
+                        <span class="warning-icon">⚠️</span>
+                        <h3>Servidor Offline</h3>
+                        <p>O servidor PowerShell não foi detetado. Por favor, execute o ficheiro <strong>Iniciar-MDT.bat</strong> na pasta do projeto.</p>
+                        <button onclick="checkConnection()" class="btn btn-secondary">Tentar Novamente</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <div class="selection-bar" id="selectionBar">
+            <div class="selection-info">
+                <span id="selectedCount">0</span> apps selecionados
+            </div>
+            <div class="selection-actions">
+                <div class="mode-toggle" id="installModeToggle" style="margin-right: 1rem;">
+                    <button class="toggle-btn active" data-mode="local">ESTE PC</button>
+                    <button class="toggle-btn" data-mode="remote">REDE</button>
+                </div>
+                <label class="auto-shutdown-label">
+                    <input type="checkbox" id="autoShutdownCheck">
+                    <span>Encerrar ao terminar</span>
+                </label>
+                <button id="clearSelection" class="btn btn-secondary">Limpar</button>
+                <button id="generateBtn" class="btn btn-primary">Instalar Selecionados</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Modal -->
+    <div class="modal-overlay" id="progressModal">
+        <div class="modal progress-modal">
+            <div class="modal-header">
+                <h3>Processo de Instalação</h3>
+            </div>
+            <div class="modal-body">
+                <div id="installingView">
+                    <div class="progress-container">
+                        <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-info">
+                        <span id="currentAppName">Iniciando...</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                </div>
+
+                <div id="successView" style="display: none;">
+                    <div class="success-animation">
+                        <div class="checkmark-circle">
+                            <div class="checkmark draw"></div>
+                        </div>
+                    </div>
+                    <h2>Instalação Finalizada!</h2>
+                    <p id="successMessage">Todas as aplicações selecionadas foram processadas com sucesso.</p>
+                    
+                    <div id="upgradeReport" style="display:none; margin: 1.5rem 0; text-align: left; background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 12px; border: 1px solid var(--border-color);">
+                        <h4 style="margin-top:0; color: var(--primary-color);">Relatório de Atualizações:</h4>
+                        <ul id="upgradeList" style="margin:0; padding-left: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">
+                        </ul>
+                    </div>
+
+                    <div class="success-actions">
+                        <button id="closeConnectionBtn" class="btn btn-danger" style="width: 100%; letter-spacing: 1px;">FECHAR LIGAÇÃO</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    </div>
+    
+    <!-- Modal de Credenciais Seguro -->
+    <div class="modal-overlay" id="credentialModal">
+        <div class="modal auth-modal">
+            <div class="modal-header">
+                <div class="modal-title-wrapper">
+                    <span class="modal-icon">🔐</span>
+                    <h3>Acesso Remoto</h3>
+                </div>
+                <button class="close-modal-btn" id="closeAuthModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-subtitle">Introduza as credenciais do PC de destino para realizar a manutenção remota.</p>
+                <div class="form-group">
+                    <label>IP / HOSTNAME</label>
+                    <input type="text" id="authHost" placeholder="192.168.x.x" class="input-field">
+                </div>
+                <div class="form-group">
+                    <label>UTILIZADOR</label>
+                    <input type="text" id="authUser" placeholder="Utilizador" class="input-field">
+                </div>
+                <div class="form-group">
+                    <label>PASSWORD</label>
+                    <input type="password" id="authPass" placeholder="••••••••" class="input-field">
+                </div>
+                <div class="modal-footer" style="display: flex; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap;">
+                    <button id="testConnectionBtn" class="btn" style="flex: 1; background: var(--bg-card); border: 1px solid var(--accent); color: var(--accent); min-width: 140px;">TESTAR LIGAÇÃO</button>
+                    <button id="startAuthUpgradeBtn" class="btn btn-primary" style="flex: 2; min-width: 200px;">AUTORIZAR E INICIAR</button>
+                    <div id="connectionStatus" style="width: 100%; margin-top: 0.5rem; text-align: center; font-size: 0.9rem; display: none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    </div>
+
+
+    <!-- Modal de Biblioteca -->
+    <div class="modal-overlay" id="libraryModal">
+        <div class="modal large-modal">
+            <div class="modal-header">
+                <div class="modal-title-wrapper">
+                    <span class="modal-icon">📚</span>
+                    <div class="modal-title-content">
+                        <h3>Gestor de Biblioteca MDT</h3>
+                        <p class="modal-subtitle" style="margin:0;">Sincronize os seus instaladores locais com as versões mais recentes.</p>
+                    </div>
+                </div>
+                <button class="close-modal-btn" id="closeLibraryModal">&times;</button>
+            </div>
+            <div class="modal-body" style="padding-top: 0.5rem;">
+                <div class="library-toolbar">
+                    <button id="refreshLibraryBtn" class="btn btn-secondary btn-sm">🔄 Atualizar Lista</button>
+                    <span id="libraryStatusMsg" style="font-size: 0.8rem; color: var(--text-muted); margin-left: auto;"></span>
+                </div>
+                <div class="library-table-wrapper">
+                    <table class="library-table">
+                        <thead>
+                            <tr>
+                                <th>APLICAÇÃO</th>
+                                <th>VERSÃO LOCAL</th>
+                                <th>NOVA VERSÃO</th>
+                                <th>ESTADO</th>
+                                <th>ACÇÃO</th>
+                            </tr>
+                        </thead>
+                        <tbody id="libraryTableBody">
+                            <!-- Preenchido via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Login Modal -->
+    <div class="modal-overlay" id="loginModal" style="display: flex;">
+        <div class="modal auth-modal">
+            <div class="modal-header">
+                <div class="modal-title-wrapper">
+                    <span class="modal-icon">🔒</span>
+                    <h3>Acesso Restrito</h3>
+                </div>
+            </div>
+            <div class="modal-body">
+                <p class="modal-subtitle">Este sistema está protegido. Introduza a password exibida na consola do servidor.</p>
+                <div class="form-group">
+                    <label>PASSWORD DO PAINEL</label>
+                    <input type="password" id="loginPass" placeholder="••••" class="input-field" style="text-align: center; letter-spacing: 0.5rem; font-size: 1.5rem;">
+                </div>
+                <div class="modal-footer" style="margin-top: 1.5rem;">
+                    <button id="loginBtn" class="btn btn-primary" style="width: 100%;">DESBLOQUEAR ACESSO</button>
+                </div>
+                <div id="loginError" style="color: var(--danger-color); text-align: center; margin-top: 1rem; display: none; font-size: 0.9rem;">
+                    Password incorreta. Tente novamente.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
