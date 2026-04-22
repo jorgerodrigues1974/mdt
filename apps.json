@@ -4,7 +4,9 @@
     { "id": "utilities", "name": "Utilitários", "icon": "🛠️", "color": "#f59e0b" },
     { "id": "office", "name": "Office & PDF", "icon": "📄", "color": "#10b981" },
     { "id": "pro", "name": "Profissional & Design", "icon": "📐", "color": "#8b5cf6" },
-    { "id": "gov", "name": "Governo & Autenticação", "icon": "⚖️", "color": "#ef4444" }
+    { "id": "gov", "name": "Governo & Autenticação", "icon": "⚖️", "color": "#ef4444" },
+    { "id": "security", "name": "Segurança", "icon": "🛡️", "color": "#ef4444" },
+    { "id": "peripherals", "name": "Periféricos & Scanners", "icon": "🖨️", "color": "#10b981" }
   ],
   "apps": [
     {
@@ -78,6 +80,16 @@
       "iconUrl": "https://logo.clearbit.com/supremocontrol.com"
     },
     {
+      "id": "chamador.bu",
+      "name": "Chamador BU",
+      "category": "utilities",
+      "description": "Sistema de chamadas BU.",
+      "type": "local",
+      "localFile": "Chamador-BU.exe",
+      "silentArgs": "/S",
+      "iconUrl": "https://img.icons8.com/color/48/service.png"
+    },
+    {
       "id": "Adobe.Acrobat.Reader.64-bit",
       "name": "Adobe Reader",
       "category": "office",
@@ -116,6 +128,36 @@
       "localFile": "GoogleEarthProSetup.exe",
       "silentArgs": "/S",
       "iconUrl": "https://logo.clearbit.com/earth.google.com"
+    },
+    {
+      "id": "gstarcad.2026",
+      "name": "GstarCAD 2026",
+      "category": "pro",
+      "description": "Software CAD profissional de alta performance.",
+      "type": "local",
+      "localFile": "GstarCAD2026_x64.exe",
+      "silentArgs": "/S",
+      "iconUrl": "https://logo.clearbit.com/gstarcad.net"
+    },
+    {
+      "id": "gstarcad.2018",
+      "name": "GstarCAD 2018",
+      "category": "pro",
+      "description": "Software CAD profissional v2018.",
+      "type": "local",
+      "localFile": "GstarCAD2018_x64.exe",
+      "silentArgs": "/S",
+      "iconUrl": "https://logo.clearbit.com/gstarcad.net"
+    },
+    {
+      "id": "gstarcad.2017",
+      "name": "GstarCAD 2017",
+      "category": "pro",
+      "description": "Software CAD profissional v2017.",
+      "type": "local",
+      "localFile": "GstarCAD2017_EN_64bit_170822.exe",
+      "silentArgs": "/S",
+      "iconUrl": "https://logo.clearbit.com/gstarcad.net"
     },
     {
       "id": "Autodesk.DesignReview",
@@ -174,6 +216,66 @@
       "description": "Ferramenta para criação e publicação de formulários inteligentes (Survey123).",
       "type": "winget",
       "iconUrl": "https://logo.clearbit.com/esri.com"
+    },
+    {
+      "id": "checkpoint.endpoint",
+      "name": "Checkpoint Endpoint",
+      "category": "security",
+      "description": "Solução de segurança Endpoint Antivirus.",
+      "type": "local",
+      "localFile": "Endpoint_89.05.msi",
+      "silentArgs": "/qn /norestart",
+      "iconUrl": "https://logo.clearbit.com/checkpoint.com"
+    },
+    {
+      "id": "epson.ds520",
+      "name": "Epson DS-520",
+      "category": "peripherals",
+      "description": "Driver e softwares para Scanner Epson DS-520.",
+      "type": "local",
+      "localFile": "DS-520\\InstallNavi.exe",
+      "silentArgs": "/s",
+      "iconUrl": "https://logo.clearbit.com/epson.com"
+    },
+    {
+      "id": "epson.ds530",
+      "name": "Epson DS-530",
+      "category": "peripherals",
+      "description": "Driver e softwares para Scanner Epson DS-530.",
+      "type": "local",
+      "localFile": "DS-530\\InstallNavi.exe",
+      "silentArgs": "/s",
+      "iconUrl": "https://logo.clearbit.com/epson.com"
+    },
+    {
+      "id": "epson.ds570w",
+      "name": "Epson DS-570W",
+      "category": "peripherals",
+      "description": "Driver e softwares para Scanner Epson DS-570W.",
+      "type": "local",
+      "localFile": "Epson DS-570W\\InstallNavi.exe",
+      "silentArgs": "/s",
+      "iconUrl": "https://logo.clearbit.com/epson.com"
+    },
+    {
+      "id": "epson.ds580w",
+      "name": "Epson DS-580W",
+      "category": "peripherals",
+      "description": "Driver e softwares para Scanner Epson DS-580W.",
+      "type": "local",
+      "localFile": "Epson DS-580W\\InstallNavi.exe",
+      "silentArgs": "/s",
+      "iconUrl": "https://logo.clearbit.com/epson.com"
+    },
+    {
+      "id": "hp.click",
+      "name": "HP Click",
+      "category": "peripherals",
+      "description": "Software de impressão simplificada para HP DesignJet.",
+      "type": "local",
+      "localFile": "HPClick-64bit-Setup-4.0.59.exe",
+      "silentArgs": "/S",
+      "iconUrl": "https://logo.clearbit.com/hp.com"
     }
   ]
 }

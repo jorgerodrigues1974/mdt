@@ -2,7 +2,15 @@
 
 Todas as alterações significativas serão registadas neste documento para manter um histórico transparente e profissional.
 
-## [v1.1.1] - 2026-04-22 (Atual)
+## [v1.2.0] - 2026-04-22 (Atual)
+### Adicionado
+- **Categorias**: Introduzidas as categorias "Segurança" 🛡️ e "Periféricos & Scanners" 🖨️.
+- **Segurança**: Adicionado Check Point Endpoint Antivirus.
+- **Periféricos**: Adicionados Scanners Epson (DS-520, DS-530, DS-570W, DS-580W) e HP Click.
+- **Produtividade**: Adicionadas versões legadas e atual de GstarCAD (2017, 2018, 2026).
+- **Utilitários**: Adicionado Chamador BU.
+
+## [v1.1.1] - 2026-04-22
 ### Alterado
 - **Interface**: Opção "Todas" movida para o final da barra de categorias a pedido do utilizador.
 

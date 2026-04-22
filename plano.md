@@ -4,9 +4,10 @@ Este documento serve como o Roadmap oficial para o projeto MDT Lite. Aqui regist
 
 ## 🎯 Objetivos Atuais (Q2 2026)
 - [x] Estabelecer fluxo de trabalho profissional (Git + Docs).
-- [x] Implementar suporte nativo para instalação via **Winget** no backend.
-- [x] Sincronizar app ArcGIS Survey123 via Winget (Instalação Direta).
-- [x] Refinar interface: Opção "Todas" movida para o final da barra.
+- [x] Suporte nativo para instalação via **Winget**.
+- [x] Sincronizar app ArcGIS Survey123 (Instalação Direta).
+- [x] Refinar interface: Opção "Todas" no final da barra.
+- [x] Integrar lote de **Scanners Epson** e **Antivírus Endpoint**.
 - [ ] Implementar sistema de logs de auditoria detalhado.
 - [ ] Refinar a interface de utilizador (UI) para um estilo mais premium (Microsoft Fluent Design).
 
