@@ -168,13 +168,11 @@
       "iconUrl": "https://logo.clearbit.com/autodesk.com"
     },
     {
-      "id": "Esri.ArcGIS.Survey123.Connect",
+      "id": "9PMST5C0DLST",
       "name": "ArcGIS Survey123 Connect",
       "category": "pro",
       "description": "Ferramenta para criação e publicação de formulários inteligentes (Survey123).",
-      "type": "local",
-      "localFile": "ArcGIS Survey123 Connect Installer.exe",
-      "silentArgs": "/S",
+      "type": "winget",
       "iconUrl": "https://logo.clearbit.com/esri.com"
     }
   ]

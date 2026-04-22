@@ -153,63 +153,95 @@ $ExcecutorBlock = {
                 }
 
                 $RemoteCommand = {
-                    param($UNCFile, $ArgsParams)
-                    if (-not (Test-Path $UNCFile)) { throw "Ficheiro nao encontrado na rede: $UNCFile" }
+                    param($UNCFile, $ArgsParams, $AppType, $AppID)
                     
-                    $extension = [System.IO.Path]::GetExtension($UNCFile).ToLower()
-                    if ($extension -eq ".msi") {
-                        $sanitizedArgs = $ArgsParams -replace "/S", "" -replace "/SILENT", "" -replace "/silent", "" -replace "/s", ""
-                        $msiArgs = "/i `"$UNCFile`" /qn /norestart ALLUSERS=1 $($sanitizedArgs.Trim())"
-                        $proc = Start-Process -FilePath "msiexec.exe" -ArgumentList $msiArgs -Wait -NoNewWindow -PassThru
+                    if ($AppType -eq "winget") {
+                        # Tentar localizar o winget no destino
+                        $w = Get-Command winget.exe -ErrorAction SilentlyContinue
+                        $exe = if ($w) { $w.Source } else { 
+                            (Get-ChildItem "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller*_x64__*\winget.exe" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
+                        }
+                        if (-not $exe) { $exe = "winget" }
+                        
+                        # Executar instalacao winget
+                        $res = & $exe install --id $AppID --silent --accept-package-agreements --accept-source-agreements --source msstore | Out-String
+                        if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 3010) {
+                            throw "Falha na instalacao Winget no destino (Exit Code $LASTEXITCODE). Erro: $res"
+                        }
+                        return "Instalacao Winget concluida no destino."
                     } else {
-                        $proc = Start-Process -FilePath $UNCFile -ArgumentList $ArgsParams -Wait -NoNewWindow -PassThru
-                    }
+                        if (-not (Test-Path $UNCFile)) { throw "Ficheiro nao encontrado na rede: $UNCFile" }
+                        
+                        $extension = [System.IO.Path]::GetExtension($UNCFile).ToLower()
+                        if ($extension -eq ".msi") {
+                            $sanitizedArgs = $ArgsParams -replace "/S", "" -replace "/SILENT", "" -replace "/silent", "" -replace "/s", ""
+                            $msiArgs = "/i `"$UNCFile`" /qn /norestart ALLUSERS=1 $($sanitizedArgs.Trim())"
+                            $proc = Start-Process -FilePath "msiexec.exe" -ArgumentList $msiArgs -Wait -NoNewWindow -PassThru
+                        } else {
+                            $proc = Start-Process -FilePath $UNCFile -ArgumentList $ArgsParams -Wait -NoNewWindow -PassThru
+                        }
 
-                    if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) { 
-                        throw "Falha no PC de destino (Exit Code $($proc.ExitCode))" 
+                        if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) { 
+                            throw "Falha no PC de destino (Exit Code $($proc.ExitCode))" 
+                        }
+                        return "Instalacao concluida no destino com sucesso."
                     }
-                    return "Instalacao concluida no destino com sucesso."
                 }
 
-                $UNCPath = "$UNCShare\installers\$($app.localFile)"
-                if ($app.localFile -match "^[a-zA-Z]:" -or $app.localFile.StartsWith("\\")) {
-                    $UNCPath = $app.localFile # Caminho absoluto ja fornecido
-                }
-                elseif ($app.localFile.StartsWith("installers\")) {
-                    $UNCPath = "$UNCShare\$($app.localFile)"
+                $UNCPath = ""
+                if ($app.type -ne "winget") {
+                    $UNCPath = "$UNCShare\installers\$($app.localFile)"
+                    if ($app.localFile -match "^[a-zA-Z]:" -or $app.localFile.StartsWith("\\")) {
+                        $UNCPath = $app.localFile # Caminho absoluto ja fornecido
+                    }
+                    elseif ($app.localFile.StartsWith("installers\")) {
+                        $UNCPath = "$UNCShare\$($app.localFile)"
+                    }
                 }
 
                 if ($cred) {
-                    Invoke-Command -ComputerName $payload.targetHost -Credential $cred -ScriptBlock $RemoteCommand -ArgumentList $UNCPath, $app.silentArgs -ErrorAction Stop
+                    Invoke-Command -ComputerName $payload.targetHost -Credential $cred -ScriptBlock $RemoteCommand -ArgumentList $UNCPath, $app.silentArgs, $app.type, $app.id -ErrorAction Stop
                 } else {
-                    Invoke-Command -ComputerName $payload.targetHost -ScriptBlock $RemoteCommand -ArgumentList $UNCPath, $app.silentArgs -ErrorAction Stop
+                    Invoke-Command -ComputerName $payload.targetHost -ScriptBlock $RemoteCommand -ArgumentList $UNCPath, $app.silentArgs, $app.type, $app.id -ErrorAction Stop
                 }
             } else {
                 # Modo Local
-                $fullPath = Join-Path $installersPath $app.localFile
-                if (-not (Test-Path $fullPath)) {
-                        $fullPath = "$scriptRoot\installers\$($app.localFile)"
-                }
-                
-                if (Test-Path $fullPath) {
-                    $workDir = Split-Path $fullPath
-                    $extension = [System.IO.Path]::GetExtension($fullPath).ToLower()
+                if ($app.type -eq "winget") {
+                    $w = Get-Command winget.exe -ErrorAction SilentlyContinue
+                    $exe = if ($w) { $w.Source } else { 
+                        (Get-ChildItem "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller*_x64__*\winget.exe" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
+                    }
+                    if (-not $exe) { $exe = "winget" }
                     
-                    if ($extension -eq ".msi") {
-                        $sanitizedArgs = $app.silentArgs -replace "/S", "" -replace "/SILENT", "" -replace "/silent", "" -replace "/s", ""
-                        $msiArgs = "/i `"$fullPath`" $($sanitizedArgs.Trim()) /qn /norestart ALLUSERS=1"
-                        $proc = Start-Process -FilePath "msiexec.exe" -ArgumentList $msiArgs -Wait -NoNewWindow -PassThru
-                    } else {
-                        $proc = Start-Process -FilePath $fullPath -ArgumentList $app.silentArgs -WorkingDirectory $workDir -Wait -NoNewWindow -PassThru
+                    & $exe install --id $($app.id) --silent --accept-package-agreements --accept-source-agreements --source msstore
+                    if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 3010) {
+                        throw "Falha na instalacao Winget local (Exit Code $LASTEXITCODE)."
                     }
-
-                    $Status["current_app"] = "A verificar conclusão..."
-                    if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) {
-                        throw "Erro na instalação local (Código: $($proc.ExitCode))."
-                    }
-                    Start-Sleep -Seconds 1
                 } else {
-                    throw "Instalador nao encontrado: $fullPath"
+                    $fullPath = Join-Path $installersPath $app.localFile
+                    if (-not (Test-Path $fullPath)) {
+                            $fullPath = "$scriptRoot\installers\$($app.localFile)"
+                    }
+                    
+                    if (Test-Path $fullPath) {
+                        $workDir = Split-Path $fullPath
+                        $extension = [System.IO.Path]::GetExtension($fullPath).ToLower()
+                        
+                        if ($extension -eq ".msi") {
+                            $sanitizedArgs = $app.silentArgs -replace "/S", "" -replace "/SILENT", "" -replace "/silent", "" -replace "/s", ""
+                            $msiArgs = "/i `"$fullPath`" $($sanitizedArgs.Trim()) /qn /norestart ALLUSERS=1"
+                            $proc = Start-Process -FilePath "msiexec.exe" -ArgumentList $msiArgs -Wait -NoNewWindow -PassThru
+                        } else {
+                            $proc = Start-Process -FilePath $fullPath -ArgumentList $app.silentArgs -WorkingDirectory $workDir -Wait -NoNewWindow -PassThru
+                        }
+
+                        $Status["current_app"] = "A verificar conclusão..."
+                        if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) {
+                            throw "Erro na instalação local (Código: $($proc.ExitCode))."
+                        }
+                    } else {
+                        throw "Instalador nao encontrado: $fullPath"
+                    }
                 }
             }
             $Status["percent"] = [Math]::Round((($Status["completed_count"] + 1) / $Status["total_count"]) * 100)

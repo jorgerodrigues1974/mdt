@@ -2,7 +2,12 @@
 
 Todas as alterações significativas serão registadas neste documento para manter um histórico transparente e profissional.
 
-## [v1.0.2] - 2026-04-22 (Atual)
+## [v1.1.0] - 2026-04-22 (Atual)
+### Adicionado
+- **Suporte Winget**: O motor de instalação (`Start-MDT.ps1`) agora suporta nativamente o `winget` para instalações locais e remotas.
+- **ArcGIS Survey123 Connect**: Migrado para modo Winget (ID `9PMST5C0DLST`), permitindo instalação direta sem abrir a Loja Microsoft.
+
+## [v1.0.2] - 2026-04-22
 ### Adicionado
 - Nova aplicação: **ArcGIS Survey123 Connect** adicionada à dashboard.
 - Atualização do roadmap (`plano.md`) e histórico de versões.
