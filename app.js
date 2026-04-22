@@ -122,21 +122,25 @@ function initClock() {
 
 
 function renderCategories() {
-    categoryNav.innerHTML = `
-        <div class="nav-item ${currentCategory === 'all' ? 'active' : ''}" data-category="all" style="--cat-color: var(--primary-color);">
-            <span class="nav-icon">📦</span>
-            <span class="nav-text">Todas</span>
-        </div>
-    `;
+    let html = '';
 
     appCategories.forEach(cat => {
-        categoryNav.innerHTML += `
+        html += `
             <div class="nav-item ${currentCategory === cat.id ? 'active' : ''}" data-category="${cat.id}" style="--cat-color: ${cat.color};">
                 <span class="nav-icon">${cat.icon}</span>
                 <span class="nav-text">${cat.name}</span>
             </div>
         `;
     });
+
+    html += `
+        <div class="nav-item ${currentCategory === 'all' ? 'active' : ''}" data-category="all" style="--cat-color: var(--primary-color);">
+            <span class="nav-icon">📦</span>
+            <span class="nav-text">Todas</span>
+        </div>
+    `;
+
+    categoryNav.innerHTML = html;
 }
 
 function renderApps() {
