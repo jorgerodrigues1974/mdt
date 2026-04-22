@@ -166,6 +166,16 @@
       "localFile": "DWG TrueView 2027\\Setup.exe",
       "silentArgs": "-q",
       "iconUrl": "https://logo.clearbit.com/autodesk.com"
+    },
+    {
+      "id": "Esri.ArcGIS.Survey123.Connect",
+      "name": "ArcGIS Survey123 Connect",
+      "category": "pro",
+      "description": "Ferramenta para criação e publicação de formulários inteligentes (Survey123).",
+      "type": "local",
+      "localFile": "ArcGIS Survey123 Connect Installer.exe",
+      "silentArgs": "/S",
+      "iconUrl": "https://logo.clearbit.com/esri.com"
     }
   ]
 }

@@ -2,7 +2,12 @@
 
 Todas as alterações significativas serão registadas neste documento para manter um histórico transparente e profissional.
 
-## [v1.0.1] - 2026-04-22 (Atual)
+## [v1.0.2] - 2026-04-22 (Atual)
+### Adicionado
+- Nova aplicação: **ArcGIS Survey123 Connect** adicionada à dashboard.
+- Atualização do roadmap (`plano.md`) e histórico de versões.
+
+## [v1.0.1] - 2026-04-22
 ### Adicionado
 - Criado ficheiro `plano.md` para gestão de roadmap.
 - Criado ficheiro `versions.md` para controlo de histórico.
