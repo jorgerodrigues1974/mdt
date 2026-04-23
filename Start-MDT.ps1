@@ -129,10 +129,12 @@ $ExcecutorBlock = {
                     if (-not (Test-Path $fullPath)) { $fullPath = "$scriptRoot\installers\$($app.localFile)" }
                     
                     if ($app.type -eq "winget") {
+                        $Status["current_app"] = "[$appNum/$total] Winget: $($app.name)"
                         $Status["percent"] = 10
                         $w = Get-Command winget.exe -ErrorAction SilentlyContinue
                         $exe = if ($w) { $w.Source } else { "winget" }
                         & $exe install --id $($app.id) --silent --accept-package-agreements --accept-source-agreements --disable-interactivity --force
+                        $Status["current_app"] = "[$appNum/$total] Concluido: $($app.name)"
                         $Status["percent"] = 100
                     } else {
                         if (Test-Path $fullPath) {
@@ -144,7 +146,7 @@ $ExcecutorBlock = {
                             $Status["percent"] = 5
                             Stop-Process -Name "$fileNameWithoutExt*" -Force -ErrorAction SilentlyContinue
                             
-                            $Status["current_app"] = "[$appNum/$total] A executar instalador..."
+                            $Status["current_app"] = "[$appNum/$total] A instalar: $($app.name)"
                             $Status["percent"] = 15
                             if ($extension -eq ".msi") {
                                 $msiArgs = "/i `"$fullPath`" /qn /norestart ALLUSERS=1"
@@ -152,6 +154,7 @@ $ExcecutorBlock = {
                             } else {
                                 Start-Process -FilePath $fullPath -ArgumentList $app.silentArgs -WorkingDirectory $workDir -Wait -NoNewWindow
                             }
+                            $Status["current_app"] = "[$appNum/$total] Concluido: $($app.name)"
                             $Status["percent"] = 100
                         }
                     }
