@@ -255,9 +255,6 @@ $ExcecutorBlock = {
                 if ($app.type -eq "winget") {
                     $Status["percent"] = 10
                     $w = Get-Command winget.exe -ErrorAction SilentlyContinue
-                    $exe = if ($w) { $w.Source } else { 
-                        (Get-ChildItem "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller*_x64__*\winget.exe" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
-                    }
                     if (-not $exe) { $exe = "winget" }
                     
                     & $exe install --id $($app.id) --silent --accept-package-agreements --accept-source-agreements --disable-interactivity --force
@@ -265,52 +262,53 @@ $ExcecutorBlock = {
                         throw "Falha na instalacao Winget local (Exit Code $LASTEXITCODE)."
                     }
                     $Status["percent"] = 100
-                } else {
-                    if (Test-Path $fullPath) {
-                        $workDir = Split-Path $fullPath
-                        $extension = [System.IO.Path]::GetExtension($fullPath).ToLower()
-                        $fileNameWithoutExt = [System.IO.Path]::GetFileNameWithoutExtension($fullPath)
-                        
-                        $Status["current_app"] = "[$appNum/$total] Limpeza: $($app.name)"
-                        $Status["percent"] = 5
-                        Stop-Process -Name "$fileNameWithoutExt*" -Force -ErrorAction SilentlyContinue
-                        
-                        $Status["current_app"] = "[$appNum/$total] A executar instalador..."
-                        $Status["percent"] = 15
-
-                        if ($extension -eq ".msi") {
-                            $sanitizedArgs = $app.silentArgs -replace "/S", "" -replace "/SILENT", "" -replace "/silent", "" -replace "/s", ""
-                            $msiArgs = "/i `"$fullPath`" $($sanitizedArgs.Trim()) /qn /norestart ALLUSERS=1"
-                            $proc = Start-Process -FilePath "msiexec.exe" -ArgumentList $msiArgs -Wait -NoNewWindow -PassThru
-                        } else {
-                            $proc = Start-Process -FilePath $fullPath -ArgumentList $app.silentArgs -WorkingDirectory $workDir -Wait -NoNewWindow -PassThru
-                        }
-                        
-                        $Status["current_app"] = "[$appNum/$total] Concluindo $($app.name)..."
-                        $Status["percent"] = 100
                     } else {
-                        throw "Instalador nao encontrado: $fullPath"
+                        if (Test-Path $fullPath) {
+                            $workDir = Split-Path $fullPath
+                            $extension = [System.IO.Path]::GetExtension($fullPath).ToLower()
+                            $fileNameWithoutExt = [System.IO.Path]::GetFileNameWithoutExtension($fullPath)
+                            
+                            $Status["current_app"] = "[$appNum/$total] Limpeza: $($app.name)"
+                            $Status["percent"] = 5
+                            Stop-Process -Name "$fileNameWithoutExt*" -Force -ErrorAction SilentlyContinue
+                            
+                            $Status["current_app"] = "[$appNum/$total] A executar instalador..."
+                            $Status["percent"] = 15
+
+                            if ($extension -eq ".msi") {
+                                $sanitizedArgs = $app.silentArgs -replace "/S", "" -replace "/SILENT", "" -replace "/silent", "" -replace "/s", ""
+                                $msiArgs = "/i `"$fullPath`" $($sanitizedArgs.Trim()) /qn /norestart ALLUSERS=1"
+                                $proc = Start-Process -FilePath "msiexec.exe" -ArgumentList $msiArgs -Wait -NoNewWindow -PassThru
+                            } else {
+                                $proc = Start-Process -FilePath $fullPath -ArgumentList $app.silentArgs -WorkingDirectory $workDir -Wait -NoNewWindow -PassThru
+                            }
+                            
+                            $Status["current_app"] = "[$appNum/$total] Concluindo $($app.name)..."
+                            $Status["percent"] = 100
+                        } else {
+                            throw "Instalador nao encontrado: $fullPath"
+                        }
                     }
                 }
+                $Status["completed_count"]++
+                Start-Sleep -Seconds 1
+            } catch {
+                $Status["error"] = "ERRO em $($app.name): $($_.Exception.Message)"
+                Start-Sleep -Seconds 3
+                $Status["error"] = $null
             }
-            $Status["completed_count"]++
-            Start-Sleep -Seconds 1
-        } catch {
-            $Status["error"] = "ERRO em $($app.name): $($_.Exception.Message)"
-            Start-Sleep -Seconds 3
-            $Status["error"] = $null
         }
-    }
+    } finally {
+        $Status["finished"] = $true
+        $Status["is_running"] = $false
+        $Status["current_app"] = "Concluido"
 
-    $Status["finished"] = $true
-    $Status["is_running"] = $false
-    $Status["current_app"] = "Concluido"
-
-    # Auto-shutdown se solicitado
-    if ($Status["auto_shutdown"]) {
-        Write-Host "[MDT] Auto-shutdown ativado. Encerrando em 5 segundos..." -ForegroundColor Yellow
-        Start-Sleep -Seconds 5
-        Stop-Process -Id $PID -Force
+        # Auto-shutdown se solicitado
+        if ($Status["auto_shutdown"]) {
+            Write-Host "[MDT] Auto-shutdown ativado. Encerrando em 5 segundos..." -ForegroundColor Yellow
+            Start-Sleep -Seconds 5
+            Stop-Process -Id $PID -Force
+        }
     }
 }
 
