@@ -33,37 +33,37 @@
         </header>
 
         <main>
-                <!-- Ferramentas de Sistema Compactas -->
-                <div class="compact-toolbar">
-                    <div class="tool-item action-btn" id="upgradeAllBtn" title="Executar atualização de todas as apps via Winget">
-                        <span class="tool-item-icon">🔄</span>
-                        <div class="tool-item-text">
-                            <h4>Atualizar Tudo</h4>
-                            <span>Winget Auto-Update</span>
+                <!-- Ferramentas de Sistema -->
+                <div class="system-tools-bar">
+                    <div class="tool-card" id="upgradeCard">
+                        <div class="tool-wrapper">
+                            <div class="tool-main-action" id="upgradeAllBtn">
+                                <div class="tool-icon">🔄</div>
+                                <div class="tool-content">
+                                    <h3>Upgrade All Apps</h3>
+                                    <p>Atualiza automaticamente todos os programas via Winget.</p>
+                                </div>
+                            </div>
+                            <div class="tool-divider"></div>
+                            <div class="tool-settings">
+                                <span class="settings-label">ALVO:</span>
+                                <div class="mode-toggle" id="upgradeModeToggle">
+                                    <button class="toggle-btn active" data-mode="local">ESTE PC</button>
+                                    <button class="toggle-btn" data-mode="remote">REDE</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="tool-item" id="libraryBtn">
-                        <span class="tool-item-icon">📚</span>
-                        <div class="tool-item-text">
-                            <h4>Biblioteca</h4>
-                            <span>Gerir Versões</span>
-                        </div>
-                    </div>
-
-                    <div class="tool-item" id="addAppBtn">
-                        <span class="tool-item-icon">➕</span>
-                        <div class="tool-item-text">
-                            <h4>+ Instalador</h4>
-                            <span>Novo Registo</span>
-                        </div>
-                    </div>
-
-                    <div class="tool-item" id="auditBtn">
-                        <span class="tool-item-icon">📋</span>
-                        <div class="tool-item-text">
-                            <h4>Auditoria</h4>
-                            <span>Logs de Sistema</span>
+                    <div class="tool-card" id="libraryBtn">
+                        <div class="tool-wrapper">
+                            <div class="tool-main-action">
+                                <div class="tool-icon">📚</div>
+                                <div class="tool-content">
+                                    <h3>Gerir Biblioteca</h3>
+                                    <p>Verifique e atualize os seus instaladores locais.</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -94,6 +94,10 @@
                 <span id="selectedCount">0</span> apps selecionados
             </div>
             <div class="selection-actions">
+                <div class="mode-toggle" id="installModeToggle" style="margin-right: 1rem;">
+                    <button class="toggle-btn active" data-mode="local">ESTE PC</button>
+                    <button class="toggle-btn" data-mode="remote">REDE</button>
+                </div>
                 <label class="auto-shutdown-label">
                     <input type="checkbox" id="autoShutdownCheck">
                     <span>Encerrar ao terminar</span>
@@ -223,50 +227,6 @@
     </div>
 
 
-    <!-- Modal de Auditoria -->
-    <div class="modal-overlay" id="auditModal">
-        <div class="modal large-modal">
-            <div class="modal-header">
-                <div class="modal-title-wrapper">
-                    <span class="modal-icon">📋</span>
-                    <div class="modal-title-content">
-                        <h3>Auditoria de Sistema</h3>
-                        <p class="modal-subtitle" style="margin:0;">Histórico detalhado de todas as operações realizadas no MDT.</p>
-                    </div>
-                </div>
-                <button class="close-modal-btn" id="closeAuditModal">&times;</button>
-            </div>
-            <div class="modal-body" style="padding-top: 0.5rem;">
-                <div class="library-toolbar">
-                    <label style="font-size: 0.7rem; font-weight: 800; color: var(--primary-color); margin-right: 1rem; text-transform: uppercase;">DATA DO LOG:</label>
-                    <select id="auditDateSelect" class="input-field" style="margin-top:0; width: 200px; padding: 0.4rem; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); border-radius: 8px; color: white;">
-                        <!-- Datas preenchidas via JS -->
-                    </select>
-                    <button id="refreshAuditBtn" class="btn btn-secondary btn-sm" style="margin-left: 1rem;">🔄</button>
-                    <span id="auditStatusMsg" style="font-size: 0.8rem; color: var(--text-muted); margin-left: auto;"></span>
-                </div>
-                <div class="library-table-wrapper" style="max-height: 600px;">
-                    <table class="library-table" id="auditTable">
-                        <thead>
-                            <tr>
-                                <th style="width: 170px;">DATA/HORA</th>
-                                <th style="width: 110px;">ORIGEM</th>
-                                <th style="width: 110px;">DESTINO</th>
-                                <th style="width: 130px;">AÇÃO</th>
-                                <th>APLICAÇÕES</th>
-                                <th style="width: 100px;">ESTADO</th>
-                            </tr>
-                        </thead>
-                        <tbody id="auditTableBody">
-                            <!-- Preenchido via JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
     <!-- Login Modal -->
     <div class="modal-overlay" id="loginModal" style="display: flex;">
         <div class="modal auth-modal">
@@ -288,56 +248,6 @@
                 <div id="loginError" style="color: var(--danger-color); text-align: center; margin-top: 1rem; display: none; font-size: 0.9rem;">
                     Password incorreta. Tente novamente.
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de Adicionar Aplicação -->
-    <div class="modal-overlay" id="addAppModal">
-        <div class="modal">
-            <div class="modal-header">
-                <div class="modal-title-wrapper">
-                    <span class="modal-icon">➕</span>
-                    <div class="modal-title-content">
-                        <h3>Novo Instalador</h3>
-                        <p class="modal-subtitle" style="margin:0;">Registe uma nova aplicação no dashboard.</p>
-                    </div>
-                </div>
-                <button class="close-modal-btn" id="closeAddAppModal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="addAppForm">
-                    <div class="form-group">
-                        <label>NOME DA APLICAÇÃO</label>
-                        <input type="text" id="newAppName" class="input-field" placeholder="Ex: Google Chrome" required>
-                    </div>
-                    <div class="form-group">
-                        <label>CATEGORIA</label>
-                        <select id="newAppCategory" class="input-field" required>
-                            <!-- Preenchido via JS -->
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>FICHEIRO (NA PASTA INSTALLERS)</label>
-                        <div style="display:flex; gap: 0.5rem;">
-                            <select id="newAppFile" class="input-field" required style="flex:1;">
-                                <option value="">A carregar ficheiros...</option>
-                            </select>
-                            <button type="button" class="btn btn-secondary" id="refreshFilesBtn" title="Atualizar Lista" style="width: 44px; padding: 0; display: flex; align-items: center; justify-content: center;">🔄</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>ARGUMENTOS SILENCIOSOS</label>
-                        <input type="text" id="newAppArgs" class="input-field" value="/S" placeholder="Ex: /S ou /qn">
-                    </div>
-                    <div class="form-group">
-                        <label>URL DO ÍCONE (OPCIONAL)</label>
-                        <input type="text" id="newAppIcon" class="input-field" placeholder="https://...">
-                    </div>
-                    <div class="modal-footer" style="padding: 1rem 0 0 0;">
-                        <button type="submit" class="btn btn-primary" style="width: 100%;">ADICIONAR AO DASHBOARD</button>
-                    </div>
-                </form>
             </div>
         </div>
     </div>

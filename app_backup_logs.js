@@ -6,13 +6,8 @@ let selectedApps = new Set();
 let currentCategory = 'all';
 let searchQuery = '';
 let authToken = sessionStorage.getItem('mdt_token') || null;
-let userRole = sessionStorage.getItem('mdt_role') || 'tech';
 let installMode = 'local'; // 'local' ou 'remote'
-let currentDisplayPercent = 0; // Para animação de avanço suave
 let activeTarget = 'localhost'; 
-let serverIp = '';
-let clientIp = '';
-let isRemote = false;
 
 async function mdtFetch(url, options = {}) {
     if (!options.headers) options.headers = {};
@@ -60,9 +55,7 @@ async function init() {
     renderApps();
     setupEventListeners();
     checkConnection();
-    fetchClientIp();
     initClock();
-    applyPermissions();
     // Intervado de verificação a cada 5 segundos
     setInterval(checkConnection, 5000);
 }
@@ -105,61 +98,9 @@ async function fetchNetworkInfo() {
         const data = await response.json();
         
         if (data.ip) {
-            serverIp = data.ip;
-            updateUIContext();
+            window.serverIp = data.ip;
         }
     } catch (e) {}
-}
-
-async function fetchClientIp() {
-    try {
-        const response = await mdtFetch('/api/whoami');
-        const data = await response.json();
-        if (data.ip) {
-            clientIp = data.ip;
-            updateUIContext();
-        }
-    } catch (e) {}
-}
-
-function updateUIContext() {
-    if (!serverIp || !clientIp) return;
-    
-    // Normalizar IPv6 ::1 para 127.0.0.1 para comparação
-    const sIp = serverIp === '::1' ? '127.0.0.1' : serverIp;
-    const cIp = clientIp === '::1' ? '127.0.0.1' : clientIp;
-    
-    isRemote = (sIp !== cIp && cIp !== '127.0.0.1');
-    
-    // O modo agora e' sempre local, as legendas sao fixas no HTML
-    const remoteBtns = document.querySelectorAll('[data-mode="remote"]');
-    remoteBtns.forEach(btn => {
-        btn.style.display = 'none'; 
-    });
-
-    applyPermissions();
-}
-
-function applyPermissions() {
-    const role = sessionStorage.getItem('mdt_role') || 'tech';
-    const isAdmin = (role === 'admin');
-    
-    // Lista de elementos restritos ao administrador
-    const adminElements = [
-        'libraryBtn', 
-        'auditBtn', 
-        'addAppBtn'
-    ];
-    
-    adminElements.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.style.display = isAdmin ? 'flex' : 'none';
-        }
-    });
-
-    // Logout visual se necessário ou outros ajustes
-    console.log(`[MDT] Perfil carregado: ${role.toUpperCase()}`);
 }
 
 function initClock() {
@@ -334,11 +275,37 @@ function setupEventListeners() {
     generateBtn.addEventListener('click', () => {
         if (selectedApps.size === 0) return;
         
-        // No modelo MDT-Direct, instalamos sempre localmente no PC onde abriu o dashboard
-        executeDeployment('local');
+        if (installMode === 'local') {
+            executeDeployment('local');
+        } else {
+            // Abrir modal de credenciais para instalação remota
+            document.getElementById('authHost').value = '';
+            openCreds(() => {
+                const host = document.getElementById('authHost').value;
+                const user = document.getElementById('authUser').value;
+                const pass = document.getElementById('authPass').value;
+
+                if (!host || !user) {
+                    alert('Por favor, preencha o Host e o Utilizador.');
+                    return;
+                }
+
+                document.getElementById('credentialModal').style.display = 'none';
+                executeDeployment('remote', host, user, pass);
+            });
+        }
     });
 
-    // Toggle de Modo de Instalação (Removido por redundância no modelo MDT-Direct)
+    // Toggle de Modo de Instalação (Barra Inferior)
+    const installModeBtns = document.querySelectorAll('#installModeToggle .toggle-btn');
+    installModeBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            installModeBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            installMode = btn.dataset.mode;
+        });
+    });
 
     // Start Real-Time Clock
     function updateClock() {
@@ -386,14 +353,8 @@ function setupEventListeners() {
             if (data.status === 'success') {
                 authToken = data.token;
                 sessionStorage.setItem('mdt_token', authToken);
-                sessionStorage.setItem('mdt_role', data.role || 'tech');
-                
                 document.getElementById('loginModal').style.display = 'none';
                 loginError.style.display = 'none';
-                
-                // Aplicar permissões visuais
-                applyPermissions();
-                
                 // Recarregar dados agora que estamos logados
                 checkConnection();
             } else {
@@ -409,13 +370,43 @@ function setupEventListeners() {
         if (e.key === 'Enter') loginBtn.click();
     });
 
-    // Winget Upgrade (MDT-Direct: Sempre Local)
-    const upgradeBtn = document.getElementById('upgradeAllBtn');
+    // Winget Upgrade Remote Action
+    const upgradeCard = document.getElementById('upgradeCard');
+    let upgradeMode = 'local'; // 'local' ou 'remote'
 
+    // Gerir botões de modo (Local/Remoto)
+    const modeBtns = document.querySelectorAll('#upgradeModeToggle .toggle-btn');
+    modeBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            modeBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            upgradeMode = btn.dataset.mode;
+        });
+    });
+
+    const upgradeBtn = document.getElementById('upgradeAllBtn');
     if (upgradeBtn) {
         upgradeBtn.addEventListener('click', () => {
-            // No modelo MDT-Direct, o upgrade e' sempre pedido ao motor local
-            executeRemoteUpgrade('localhost', '', '', true);
+            if (upgradeMode === 'local') {
+                // Iniciar diretamente
+                executeRemoteUpgrade('localhost', '', '', true);
+            } else {
+                // Abrir modal de credenciais
+                openCreds(() => {
+                    const host = document.getElementById('authHost').value;
+                    const user = document.getElementById('authUser').value;
+                    const pass = document.getElementById('authPass').value;
+
+                    if (!host || !user) {
+                        alert('Por favor, preencha o Host e o Utilizador.');
+                        return;
+                    }
+
+                    document.getElementById('credentialModal').style.display = 'none';
+                    executeRemoteUpgrade(host, user, pass, false);
+                });
+            }
         });
     }
 
@@ -515,59 +506,6 @@ function setupEventListeners() {
             statusDiv.innerHTML = '❌ Falha crítica de rede.';
         }
     });
-
-    // Audit Manager
-    const auditBtn = document.getElementById('auditBtn');
-    if (auditBtn) {
-        auditBtn.addEventListener('click', openAuditManager);
-    }
-
-    const closeAuditBtn = document.getElementById('closeAuditModal');
-    if (closeAuditBtn) {
-        closeAuditBtn.addEventListener('click', () => {
-            document.getElementById('auditModal').style.display = 'none';
-        });
-    }
-
-    const refreshAuditBtn = document.getElementById('refreshAuditBtn');
-    if (refreshAuditBtn) {
-        refreshAuditBtn.addEventListener('click', () => {
-            const date = document.getElementById('auditDateSelect').value;
-            if (date) loadAuditData(date);
-        });
-    }
-
-    const auditDateSelect = document.getElementById('auditDateSelect');
-    if (auditDateSelect) {
-        auditDateSelect.addEventListener('change', (e) => {
-            loadAuditData(e.target.value);
-        });
-    }
-
-    // Add App Manager
-    const addAppBtn = document.getElementById('addAppBtn');
-    if (addAppBtn) {
-        addAppBtn.addEventListener('click', openAddAppManager);
-    }
-
-    const closeAddAppBtn = document.getElementById('closeAddAppModal');
-    if (closeAddAppBtn) {
-        closeAddAppBtn.addEventListener('click', () => {
-            document.getElementById('addAppModal').style.display = 'none';
-        });
-    }
-
-    const addAppForm = document.getElementById('addAppForm');
-    if (addAppForm) {
-        addAppForm.addEventListener('submit', saveNewApp);
-    }
-
-    const refreshFilesBtn = document.getElementById('refreshFilesBtn');
-    if (refreshFilesBtn) {
-        refreshFilesBtn.addEventListener('click', () => {
-            loadInstallerFiles();
-        });
-    }
 }
 
 async function openLibraryManager() {
@@ -743,12 +681,6 @@ async function executeDeployment(mode, targetHost = '', targetUser = '', targetP
         autoShutdown: document.getElementById('autoShutdownCheck').checked
     };
 
-    if (mode === 'local' && isRemote) {
-        if (!confirm(`Atenção: Vai instalar estas aplicações no SERVIDOR (${serverIp}) e não no seu PC atual. Deseja continuar?`)) {
-            return;
-        }
-    }
-
     if (mode === 'remote') {
         payload.targetHost = targetHost;
         payload.targetUser = targetUser;
@@ -770,7 +702,6 @@ async function executeDeployment(mode, targetHost = '', targetUser = '', targetP
     successView.style.display = 'none';
     document.getElementById('upgradeReport').style.display = 'none';
     document.getElementById('upgradeList').innerHTML = '';
-    currentDisplayPercent = 0; 
     updateProgress(0, mode === 'remote' ? 'Preparando envio para ' + payload.targetHost + '...' : 'Iniciando...');
 
     try {
@@ -805,27 +736,9 @@ async function pollStatus() {
         const status = await response.json();
 
         if (status.is_running || status.finished) {
-            let targetPercent = status.percent || 0;
-
-            // Se a percentagem do backend for menor que a atual, significa que mudou de app (Reset)
-            if (targetPercent < currentDisplayPercent && status.is_running && !status.finished) {
-                currentDisplayPercent = targetPercent;
-            }
-
+            const percent = Math.round((status.completed_count / status.total_count) * 100);
             const displayText = status.error ? `⚠️ ${status.error}` : status.current_app;
-            
-            // Efeito de avanço lento (inching) para não parecer parado
-            if (status.is_running && !status.finished) {
-                if (currentDisplayPercent < targetPercent) {
-                    currentDisplayPercent = targetPercent;
-                } else if (currentDisplayPercent < 98) {
-                    currentDisplayPercent += 0.1;
-                }
-            } else {
-                currentDisplayPercent = targetPercent;
-            }
-
-            updateProgress(currentDisplayPercent, displayText);
+            updateProgress(percent, displayText);
 
             if (status.finished) {
                 clearInterval(statusInterval);
@@ -846,9 +759,8 @@ function updateProgress(percent, appName) {
     const percentEl = document.getElementById('progressPercent');
     const nameEl = document.getElementById('currentAppName');
 
-    const rounded = Math.floor(percent);
-    bar.style.width = `${Math.max(percent, 2)}%`;
-    percentEl.textContent = `${Math.max(rounded, 0)}%`;
+    bar.style.width = `${percent}%`;
+    percentEl.textContent = `${percent}%`;
     nameEl.textContent = appName;
 }
 
@@ -870,259 +782,6 @@ function showSuccess(status = null) {
             li.innerHTML = `<strong>${res.name}</strong> - <span style="color: var(--success)">Atualizado</span>`;
             list.appendChild(li);
         });
-    }
-}
-
-async function openAuditManager() {
-    const modal = document.getElementById('auditModal');
-    const dateSelect = document.getElementById('auditDateSelect');
-    const tbody = document.getElementById('auditTableBody');
-    const statusMsg = document.getElementById('auditStatusMsg');
-    
-    modal.style.display = 'flex';
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 3rem;">A carregar datas do servidor...</td></tr>';
-    statusMsg.textContent = 'A consultar histórico de auditoria...';
-
-    try {
-        const response = await mdtFetch('/api/audit');
-        const data = await response.json();
-        
-        if (data.dates && data.dates.length > 0) {
-            dateSelect.innerHTML = data.dates.map(d => `<option value="${d}">${d}</option>`).join('');
-            loadAuditData(data.dates[0]);
-        } else {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 3rem;">Nenhum registo de auditoria encontrado na pasta.</td></tr>';
-            statusMsg.textContent = 'Sem ficheiros de log.';
-        }
-    } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--danger-color);">Erro ao carregar auditoria. Verifique a ligação ao servidor.</td></tr>';
-    }
-}
-
-async function loadAuditData(date) {
-    const tbody = document.getElementById('auditTableBody');
-    const statusMsg = document.getElementById('auditStatusMsg');
-    
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 2rem;"><span class="spinner"></span> A processar ficheiro de ' + date + '...</td></tr>';
-    
-    try {
-        const response = await mdtFetch(`/api/audit?date=${date}`);
-        if (!response.ok) {
-            const txt = await response.text();
-            throw new Error(`Erro do servidor (${response.status}): ${txt.substring(0, 50)}`);
-        }
-        const data = await response.json();
-        
-        if (data.status === "success" && data.content) {
-            tbody.innerHTML = '';
-            // Garantir que content é um array (PS 5.1 pode retornar string se só houver 1 linha)
-            const linesArray = Array.isArray(data.content) ? data.content : [data.content];
-            
-            // Inverter para mostrar os mais recentes primeiro
-            const records = linesArray
-                .map(line => parseAuditLine(line))
-                .filter(r => r !== null)
-                .reverse();
-
-            if (records.length === 0) {
-                 tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 3rem;">Nenhum registo válido encontrado neste ficheiro.</td></tr>';
-                 return;
-            }
-
-            records.forEach(r => {
-                const tr = document.createElement('tr');
-                const isSuccess = r.status.toLowerCase().includes('sucesso') || r.status.toLowerCase() === 'ok';
-                const statusClass = isSuccess ? 'status-ok' : 'status-missing';
-                
-                tr.innerHTML = `
-                    <td style="font-family: monospace; font-size: 0.8rem; color: var(--primary-color); white-space: nowrap;">${r.timestamp}</td>
-                    <td><span style="background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; border: 1px solid var(--border-color);">${r.origin}</span></td>
-                    <td><span style="font-weight: 600; color: #fff;">${r.target}</span></td>
-                    <td><span style="color: #fff; font-weight: 500;">${r.action}</span></td>
-                    <td><div style="font-size: 0.8rem; color: var(--text-muted); max-width: 350px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${r.apps}">${r.apps}</div></td>
-                    <td><span class="status-badge ${statusClass}">${r.status}</span></td>
-                `;
-                tbody.appendChild(tr);
-            });
-            statusMsg.textContent = `${records.length} ações registadas para ${date}.`;
-        } else {
-            const errorMsg = data.message || "O ficheiro de log está vazio ou não pôde ser lido.";
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 3rem; color: var(--danger);">${errorMsg}</td></tr>`;
-            statusMsg.textContent = 'Erro na leitura.';
-        }
-    } catch (e) {
-        tbody.innerHTML = `<tr id="auditErrorRow"><td colspan="6" style="text-align:center; color:var(--danger-color);">Falha crítica de ligação ou parsing: ${e.message}</td></tr>`;
-    }
-}
-
-function parseAuditLine(line) {
-    if (typeof line !== 'string' || !line.trim()) return null;
-    
-    // Limpar caracteres de controlo invisíveis (como o BOM do UTF-8 que pode vir no início)
-    const cleanLine = line.replace(/[^\x20-\x7E\xA0-\xFF]/g, '').trim();
-    if (!cleanLine) return null;
-
-    // Divide por pipe (|)
-    const parts = cleanLine.split('|').map(p => p.trim());
-    
-    try {
-        const getVal = (idx, label, fallback = 'N/A') => {
-            let part = parts[idx] || '';
-            if (!part) return fallback;
-            
-            // Tentar extrair valor após o rótulo (ex: "ORIGEM: 127.0.0.1")
-            if (part.includes(':')) {
-                const subParts = part.split(':');
-                if (subParts.length > 1) {
-                    return subParts.slice(1).join(':').trim();
-                }
-            }
-            return part;
-        };
-
-        // Extrair timestamp de dentro dos parêntesis retos []
-        let timestamp = 'N/A';
-        const tsMatch = cleanLine.match(/\[(.*?)\]/);
-        if (tsMatch) timestamp = tsMatch[1];
-
-        return {
-            timestamp: timestamp,
-            origin: getVal(1, 'ORIGEM', 'Local'),
-            target: getVal(2, 'DESTINO', 'Desconhecido'),
-            action: getVal(3, 'ACAO', 'Ação'),
-            apps: parts[4] ? parts[4].replace(/APPS:\s*/i, '').replace('[', '').replace(']', '').trim() : 'N/A',
-            status: parts[5] ? parts[5].replace(/STATUS:\s*/i, '').trim() : 'Sucesso'
-        };
-    } catch (e) {
-        console.warn("Erro ao processar linha de log:", line, e);
-        // Fallback: mostrar a linha bruta se o parsing falhar para não perder a informação
-        return {
-            timestamp: 'Erro',
-            origin: '---',
-            target: 'Linha Inválida',
-            action: 'Erro de Leitura',
-            apps: line.substring(0, 50) + '...',
-            status: 'Falha'
-        };
-    }
-}
-
-async function openAddAppManager() {
-    const modal = document.getElementById('addAppModal');
-    const categorySelect = document.getElementById('newAppCategory');
-    
-    modal.style.display = 'flex';
-    
-    // Preencher categorias
-    categorySelect.innerHTML = appCategories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
-    
-    // Carregar ficheiros
-    loadInstallerFiles();
-}
-
-async function loadInstallerFiles() {
-    const fileSelect = document.getElementById('newAppFile');
-    const refreshBtn = document.getElementById('refreshFilesBtn');
-    
-    fileSelect.innerHTML = '<option value="">A carregar ficheiros...</option>';
-    if (refreshBtn) refreshBtn.classList.add('rotating'); // Podia adicionar animação CSS
-
-    try {
-        const response = await mdtFetch('/api/all-installers');
-        if (!response.ok) {
-            const txt = await response.text();
-            throw new Error(`Erro do servidor (${response.status}): ${txt.substring(0, 50)}`);
-        }
-        const data = await response.json();
-        
-        if (data.status === "success" && data.files && data.files.length > 0) {
-            fileSelect.innerHTML = data.files.map(f => `<option value="${f}">${f}</option>`).join('');
-            
-            // Tentar adivinhar nome quando o ficheiro mudar
-            fileSelect.onchange = () => {
-                const val = fileSelect.value;
-                if (!val) return;
-
-                const fileName = val.split('\\').pop().split('/').pop();
-                const guessedName = fileName.replace('.exe', '').replace('.msi', '').replace(/[._-]/g, ' ').replace(/setup|installer/gi, '').trim();
-                if (guessedName) {
-                    const nameInput = document.getElementById('newAppName');
-                    if (!nameInput.value) nameInput.value = guessedName;
-                    
-                    // Sugerir ícone se for uma app comum
-                    const slug = guessedName.toLowerCase();
-                    const iconInput = document.getElementById('newAppIcon');
-                    if (!iconInput.value) {
-                        if (slug.includes('chrome')) iconInput.value = 'https://logo.clearbit.com/google.com';
-                        else if (slug.includes('firefox')) iconInput.value = 'https://logo.clearbit.com/mozilla.org';
-                        else if (slug.includes('vlc')) iconInput.value = 'https://logo.clearbit.com/videolan.org';
-                        else if (slug.includes('pdf')) iconInput.value = 'https://logo.clearbit.com/adobe.com';
-                    }
-                }
-                
-                // Definir argumentos padrão por extensão
-                const argsInput = document.getElementById('newAppArgs');
-                if (val.endsWith('.msi')) {
-                    argsInput.value = '/qn /norestart';
-                } else if (val.endsWith('.exe')) {
-                    argsInput.value = '/S';
-                }
-            };
-            fileSelect.onchange(); // Acionar para o primeiro item
-        } else {
-            const msg = data.message || "Nenhum ficheiro detetado em installers/";
-            fileSelect.innerHTML = `<option value="">${msg}</option>`;
-        }
-    } catch (e) {
-        fileSelect.innerHTML = `<option value="">Erro de ligação: ${e.message}</option>`;
-    } finally {
-        if (refreshBtn) refreshBtn.classList.remove('rotating');
-    }
-}
-
-async function saveNewApp(e) {
-    e.preventDefault();
-    const saveBtn = e.target.querySelector('button[type="submit"]');
-    const originalText = saveBtn.innerText;
-    
-    const newApp = {
-        id: document.getElementById('newAppName').value.toLowerCase().replace(/\s+/g, '.'),
-        name: document.getElementById('newAppName').value,
-        category: document.getElementById('newAppCategory').value,
-        description: "Adicionado via Dashboard",
-        type: "local",
-        localFile: document.getElementById('newAppFile').value,
-        silentArgs: document.getElementById('newAppArgs').value,
-        iconUrl: document.getElementById('newAppIcon').value || "https://img.icons8.com/color/48/package.png"
-    };
-
-    if (!newApp.localFile) {
-        alert('Por favor, selecione um ficheiro.');
-        return;
-    }
-
-    saveBtn.disabled = true;
-    saveBtn.innerText = '⌛ A GRAVAR...';
-
-    try {
-        const response = await mdtFetch('/api/apps/add', {
-            method: 'POST',
-            body: JSON.stringify(newApp)
-        });
-        const data = await response.json();
-        
-        if (data.status === 'success') {
-            document.getElementById('addAppModal').style.display = 'none';
-            // Recarregar a lista de apps
-            window.location.reload();
-        } else {
-            alert('Erro ao gravar: ' + data.message);
-        }
-    } catch (e) {
-        alert('Falha total ao gravar aplicação.');
-    } finally {
-        saveBtn.disabled = false;
-        saveBtn.innerText = originalText;
     }
 }
 

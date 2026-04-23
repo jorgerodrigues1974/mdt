@@ -59,7 +59,8 @@ export const apps = [
     name: 'PDF24 Creator',
     category: 'office',
     description: 'Conjunto de ferramentas PDF completo.',
-    type: 'winget'
+    type: 'winget',
+    overrideArgs: '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-'
   },
 
   // Professional / Design

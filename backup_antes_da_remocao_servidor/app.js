@@ -6,13 +6,8 @@ let selectedApps = new Set();
 let currentCategory = 'all';
 let searchQuery = '';
 let authToken = sessionStorage.getItem('mdt_token') || null;
-let userRole = sessionStorage.getItem('mdt_role') || 'tech';
 let installMode = 'local'; // 'local' ou 'remote'
-let currentDisplayPercent = 0; // Para animação de avanço suave
 let activeTarget = 'localhost'; 
-let serverIp = '';
-let clientIp = '';
-let isRemote = false;
 
 async function mdtFetch(url, options = {}) {
     if (!options.headers) options.headers = {};
@@ -60,9 +55,7 @@ async function init() {
     renderApps();
     setupEventListeners();
     checkConnection();
-    fetchClientIp();
     initClock();
-    applyPermissions();
     // Intervado de verificação a cada 5 segundos
     setInterval(checkConnection, 5000);
 }
@@ -105,61 +98,9 @@ async function fetchNetworkInfo() {
         const data = await response.json();
         
         if (data.ip) {
-            serverIp = data.ip;
-            updateUIContext();
+            window.serverIp = data.ip;
         }
     } catch (e) {}
-}
-
-async function fetchClientIp() {
-    try {
-        const response = await mdtFetch('/api/whoami');
-        const data = await response.json();
-        if (data.ip) {
-            clientIp = data.ip;
-            updateUIContext();
-        }
-    } catch (e) {}
-}
-
-function updateUIContext() {
-    if (!serverIp || !clientIp) return;
-    
-    // Normalizar IPv6 ::1 para 127.0.0.1 para comparação
-    const sIp = serverIp === '::1' ? '127.0.0.1' : serverIp;
-    const cIp = clientIp === '::1' ? '127.0.0.1' : clientIp;
-    
-    isRemote = (sIp !== cIp && cIp !== '127.0.0.1');
-    
-    // O modo agora e' sempre local, as legendas sao fixas no HTML
-    const remoteBtns = document.querySelectorAll('[data-mode="remote"]');
-    remoteBtns.forEach(btn => {
-        btn.style.display = 'none'; 
-    });
-
-    applyPermissions();
-}
-
-function applyPermissions() {
-    const role = sessionStorage.getItem('mdt_role') || 'tech';
-    const isAdmin = (role === 'admin');
-    
-    // Lista de elementos restritos ao administrador
-    const adminElements = [
-        'libraryBtn', 
-        'auditBtn', 
-        'addAppBtn'
-    ];
-    
-    adminElements.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.style.display = isAdmin ? 'flex' : 'none';
-        }
-    });
-
-    // Logout visual se necessário ou outros ajustes
-    console.log(`[MDT] Perfil carregado: ${role.toUpperCase()}`);
 }
 
 function initClock() {
@@ -334,11 +275,37 @@ function setupEventListeners() {
     generateBtn.addEventListener('click', () => {
         if (selectedApps.size === 0) return;
         
-        // No modelo MDT-Direct, instalamos sempre localmente no PC onde abriu o dashboard
-        executeDeployment('local');
+        if (installMode === 'local') {
+            executeDeployment('local');
+        } else {
+            // Abrir modal de credenciais para instalação remota
+            document.getElementById('authHost').value = '';
+            openCreds(() => {
+                const host = document.getElementById('authHost').value;
+                const user = document.getElementById('authUser').value;
+                const pass = document.getElementById('authPass').value;
+
+                if (!host || !user) {
+                    alert('Por favor, preencha o Host e o Utilizador.');
+                    return;
+                }
+
+                document.getElementById('credentialModal').style.display = 'none';
+                executeDeployment('remote', host, user, pass);
+            });
+        }
     });
 
-    // Toggle de Modo de Instalação (Removido por redundância no modelo MDT-Direct)
+    // Toggle de Modo de Instalação (Barra Inferior)
+    const installModeBtns = document.querySelectorAll('#installModeToggle .toggle-btn');
+    installModeBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            installModeBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            installMode = btn.dataset.mode;
+        });
+    });
 
     // Start Real-Time Clock
     function updateClock() {
@@ -386,14 +353,8 @@ function setupEventListeners() {
             if (data.status === 'success') {
                 authToken = data.token;
                 sessionStorage.setItem('mdt_token', authToken);
-                sessionStorage.setItem('mdt_role', data.role || 'tech');
-                
                 document.getElementById('loginModal').style.display = 'none';
                 loginError.style.display = 'none';
-                
-                // Aplicar permissões visuais
-                applyPermissions();
-                
                 // Recarregar dados agora que estamos logados
                 checkConnection();
             } else {
@@ -409,13 +370,43 @@ function setupEventListeners() {
         if (e.key === 'Enter') loginBtn.click();
     });
 
-    // Winget Upgrade (MDT-Direct: Sempre Local)
-    const upgradeBtn = document.getElementById('upgradeAllBtn');
+    // Winget Upgrade Remote Action
+    const upgradeCard = document.getElementById('upgradeCard');
+    let upgradeMode = 'local'; // 'local' ou 'remote'
 
+    // Gerir botões de modo (Local/Remoto)
+    const modeBtns = document.querySelectorAll('#upgradeModeToggle .toggle-btn-mini');
+    modeBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            modeBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            upgradeMode = btn.dataset.mode;
+        });
+    });
+
+    const upgradeBtn = document.getElementById('upgradeAllBtn');
     if (upgradeBtn) {
         upgradeBtn.addEventListener('click', () => {
-            // No modelo MDT-Direct, o upgrade e' sempre pedido ao motor local
-            executeRemoteUpgrade('localhost', '', '', true);
+            if (upgradeMode === 'local') {
+                // Iniciar diretamente
+                executeRemoteUpgrade('localhost', '', '', true);
+            } else {
+                // Abrir modal de credenciais
+                openCreds(() => {
+                    const host = document.getElementById('authHost').value;
+                    const user = document.getElementById('authUser').value;
+                    const pass = document.getElementById('authPass').value;
+
+                    if (!host || !user) {
+                        alert('Por favor, preencha o Host e o Utilizador.');
+                        return;
+                    }
+
+                    document.getElementById('credentialModal').style.display = 'none';
+                    executeRemoteUpgrade(host, user, pass, false);
+                });
+            }
         });
     }
 
@@ -743,12 +734,6 @@ async function executeDeployment(mode, targetHost = '', targetUser = '', targetP
         autoShutdown: document.getElementById('autoShutdownCheck').checked
     };
 
-    if (mode === 'local' && isRemote) {
-        if (!confirm(`Atenção: Vai instalar estas aplicações no SERVIDOR (${serverIp}) e não no seu PC atual. Deseja continuar?`)) {
-            return;
-        }
-    }
-
     if (mode === 'remote') {
         payload.targetHost = targetHost;
         payload.targetUser = targetUser;
@@ -770,7 +755,6 @@ async function executeDeployment(mode, targetHost = '', targetUser = '', targetP
     successView.style.display = 'none';
     document.getElementById('upgradeReport').style.display = 'none';
     document.getElementById('upgradeList').innerHTML = '';
-    currentDisplayPercent = 0; 
     updateProgress(0, mode === 'remote' ? 'Preparando envio para ' + payload.targetHost + '...' : 'Iniciando...');
 
     try {
@@ -805,27 +789,9 @@ async function pollStatus() {
         const status = await response.json();
 
         if (status.is_running || status.finished) {
-            let targetPercent = status.percent || 0;
-
-            // Se a percentagem do backend for menor que a atual, significa que mudou de app (Reset)
-            if (targetPercent < currentDisplayPercent && status.is_running && !status.finished) {
-                currentDisplayPercent = targetPercent;
-            }
-
+            const percent = Math.round((status.completed_count / status.total_count) * 100);
             const displayText = status.error ? `⚠️ ${status.error}` : status.current_app;
-            
-            // Efeito de avanço lento (inching) para não parecer parado
-            if (status.is_running && !status.finished) {
-                if (currentDisplayPercent < targetPercent) {
-                    currentDisplayPercent = targetPercent;
-                } else if (currentDisplayPercent < 98) {
-                    currentDisplayPercent += 0.1;
-                }
-            } else {
-                currentDisplayPercent = targetPercent;
-            }
-
-            updateProgress(currentDisplayPercent, displayText);
+            updateProgress(percent, displayText);
 
             if (status.finished) {
                 clearInterval(statusInterval);
@@ -846,9 +812,8 @@ function updateProgress(percent, appName) {
     const percentEl = document.getElementById('progressPercent');
     const nameEl = document.getElementById('currentAppName');
 
-    const rounded = Math.floor(percent);
-    bar.style.width = `${Math.max(percent, 2)}%`;
-    percentEl.textContent = `${Math.max(rounded, 0)}%`;
+    bar.style.width = `${percent}%`;
+    percentEl.textContent = `${percent}%`;
     nameEl.textContent = appName;
 }
 
@@ -958,52 +923,29 @@ async function loadAuditData(date) {
 function parseAuditLine(line) {
     if (typeof line !== 'string' || !line.trim()) return null;
     
-    // Limpar caracteres de controlo invisíveis (como o BOM do UTF-8 que pode vir no início)
-    const cleanLine = line.replace(/[^\x20-\x7E\xA0-\xFF]/g, '').trim();
-    if (!cleanLine) return null;
+    // Divide por pipe e limpa espaços
+    const parts = line.split('|').map(p => p.trim());
+    if (parts.length < 4) return null;
 
-    // Divide por pipe (|)
-    const parts = cleanLine.split('|').map(p => p.trim());
-    
     try {
-        const getVal = (idx, label, fallback = 'N/A') => {
-            let part = parts[idx] || '';
-            if (!part) return fallback;
-            
-            // Tentar extrair valor após o rótulo (ex: "ORIGEM: 127.0.0.1")
-            if (part.includes(':')) {
-                const subParts = part.split(':');
-                if (subParts.length > 1) {
-                    return subParts.slice(1).join(':').trim();
-                }
-            }
+        const getVal = (idx, label) => {
+            const part = parts[idx] || '';
+            if (part.includes(': ')) return part.split(': ').slice(1).join(': ').trim();
+            if (part.toUpperCase().startsWith(label + ':')) return part.substring(label.length + 1).trim();
             return part;
         };
 
-        // Extrair timestamp de dentro dos parêntesis retos []
-        let timestamp = 'N/A';
-        const tsMatch = cleanLine.match(/\[(.*?)\]/);
-        if (tsMatch) timestamp = tsMatch[1];
-
         return {
-            timestamp: timestamp,
-            origin: getVal(1, 'ORIGEM', 'Local'),
-            target: getVal(2, 'DESTINO', 'Desconhecido'),
-            action: getVal(3, 'ACAO', 'Ação'),
+            timestamp: parts[0].replace('[', '').replace(']', '').trim(),
+            origin: getVal(1, 'ORIGEM'),
+            target: getVal(2, 'DESTINO'),
+            action: getVal(3, 'ACAO'),
             apps: parts[4] ? parts[4].replace(/APPS:\s*/i, '').replace('[', '').replace(']', '').trim() : 'N/A',
             status: parts[5] ? parts[5].replace(/STATUS:\s*/i, '').trim() : 'Sucesso'
         };
     } catch (e) {
-        console.warn("Erro ao processar linha de log:", line, e);
-        // Fallback: mostrar a linha bruta se o parsing falhar para não perder a informação
-        return {
-            timestamp: 'Erro',
-            origin: '---',
-            target: 'Linha Inválida',
-            action: 'Erro de Leitura',
-            apps: line.substring(0, 50) + '...',
-            status: 'Falha'
-        };
+        console.error("Erro ao processar linha de log:", line, e);
+        return null;
     }
 }
 

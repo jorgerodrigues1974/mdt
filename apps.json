@@ -105,8 +105,8 @@
       "category": "office",
       "description": "Conjunto de ferramentas PDF completo.",
       "type": "local",
-      "localFile": "pdf24-creator-11.30.0-x64.exe",
-      "silentArgs": "/S",
+      "localFile": "pdf24-creator-11.30.1-x64.exe",
+      "silentArgs": "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /LOG=\"c:\\Users\\jorgerodrigues\\Documents\\MDT\\pdf24_install.log\"",
       "iconUrl": "https://logo.clearbit.com/pdf24.org"
     },
     {

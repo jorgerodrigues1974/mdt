@@ -98,118 +98,62 @@ header {
     border: 1px solid var(--border-color);
 }
 
-/* FERRAMENTAS DE SISTEMA (COMPACT) */
-.compact-toolbar {
-    display: flex;
-    gap: 0.8rem;
-    margin: 0.5rem 0 1.2rem 0;
-    flex-wrap: wrap;
+/* FERRAMENTAS DE SISTEMA */
+.system-tools-bar {
+    margin-bottom: 1.5rem;
 }
 
-.tool-item {
+.tool-card {
     background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(15, 23, 42, 0.4));
-    border: 1px solid rgba(59, 130, 246, 0.2);
-    border-radius: 12px;
-    padding: 0.6rem 1rem;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 16px;
+    padding: 1.2rem;
     display: flex;
     align-items: center;
-    gap: 0.8rem;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    flex: 1;
-    min-width: 200px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
 }
 
-.tool-item:hover {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(15, 23, 42, 0.6));
+.tool-wrapper { display: flex; align-items: center; width: 100%; }
+.tool-main-action { display: flex; align-items: center; gap: 1.5rem; flex-grow: 1; cursor: pointer; }
+.tool-divider { width: 1px; height: 40px; background: var(--border-color); margin: 0 1.5rem; }
+.tool-settings { display: flex; align-items: center; gap: 0.8rem; }
+.settings-label { font-size: 0.7rem; font-weight: 800; color: var(--primary-color); letter-spacing: 1px; }
+
+/* MODE TOGGLE */
+.mode-toggle { background: rgba(0,0,0,0.4); border-radius: 10px; padding: 4px; display: flex; border: 1px solid var(--border-color); }
+.toggle-btn { background: none; border: none; color: var(--text-muted); font-size: 0.65rem; font-weight: 800; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+.toggle-btn.active { background: var(--primary-color); color: white; box-shadow: 0 2px 10px rgba(59, 130, 246, 0.4); }
+
+.tool-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 4px; height: 100%;
+    background: var(--primary-color);
+}
+
+.tool-card:hover {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(15, 23, 42, 0.6));
     border-color: var(--primary-color);
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    box-shadow: 0 10px 30px -10px rgba(59, 130, 246, 0.3);
 }
 
-.tool-item-icon {
-    font-size: 1.4rem;
+.tool-icon {
+    font-size: 2.2rem;
 }
 
-.tool-item-text {
-    display: flex;
-    flex-direction: column;
-}
-
-.tool-item-text h4 {
-    margin: 0;
-    font-size: 0.9rem;
-    font-family: 'Outfit', sans-serif;
+.tool-content h3 {
+    margin: 0 0 0.2rem 0;
+    font-family: 'Outfit';
+    font-size: 1.2rem;
     color: #fff;
 }
 
-.tool-item-text span {
-    font-size: 0.7rem;
+.tool-content p {
+    margin: 0;
     color: var(--text-muted);
-}
-
-.tool-item-divider {
-    width: 1px;
-    height: 24px;
-    background: var(--border-color);
-    margin: 0 0.5rem;
-}
-
-/* MINI TOGGLE */
-.mode-toggle-compact {
-    background: rgba(0,0,0,0.4);
-    border-radius: 8px;
-    padding: 3px;
-    display: flex;
-    border: 1px solid var(--border-color);
-}
-
-.toggle-btn-mini {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    font-size: 0.55rem;
-    font-weight: 800;
-    padding: 0.3rem 0.5rem;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-}
-
-.toggle-btn-mini.active {
-    background: var(--primary-color);
-    color: white;
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
-}
-
-/* STANDARD TOGGLE (Usado na barra inferior) */
-.mode-toggle { 
-    background: rgba(0,0,0,0.4); 
-    border-radius: 10px; 
-    padding: 4px; 
-    display: flex; 
-    border: 1px solid var(--border-color); 
-}
-
-.toggle-btn { 
-    background: rgba(255, 255, 255, 0.05); 
-    border: 1px solid rgba(255, 255, 255, 0.1); 
-    color: var(--text-muted); 
-    font-size: 0.75rem; 
-    font-weight: 700; 
-    padding: 0.6rem 1.2rem; 
-    border-radius: 8px; 
-    cursor: pointer; 
-    transition: all 0.2s; 
-    white-space: nowrap; 
-}
-
-.toggle-btn.active { 
-    background: var(--primary-color) !important; 
-    color: white !important; 
-    border-color: var(--primary-color);
-    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); 
+    font-size: 0.85rem;
 }
 
 /* FORM GROUPS */
@@ -388,35 +332,7 @@ header {
 
 .app-card.selected {
     border-color: var(--success);
-    border-width: 2px;
-    background: rgba(16, 185, 129, 0.15);
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
-    transform: translateY(-2px) scale(1.01);
-}
-
-.checkbox-circle {
-    width: 20px;
-    height: 20px;
-    border: 2px solid var(--border-color);
-    border-radius: 50%;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0,0,0,0.2);
-}
-
-.app-card.selected .checkbox-circle {
-    background: var(--success);
-    border-color: var(--success);
-    box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
-}
-
-.app-card.selected .checkbox-circle::after {
-    content: '✓';
-    color: white;
-    font-size: 12px;
-    font-weight: 900;
+    background: rgba(16, 185, 129, 0.1);
 }
 
 .app-header {
@@ -556,50 +472,18 @@ header {
     font-family: inherit;
 }
 
-.progress-container {
-    background: rgba(0,0,0,0.3);
-    height: 14px;
+#progressModal .progress-track {
+    background: var(--card-bg);
+    height: 12px;
     border-radius: 10px;
     overflow: hidden;
     margin-bottom: 1rem;
-    border: 1px solid var(--border-color);
-    position: relative;
 }
-
-.progress-bar {
+#progressModal .progress-fill {
     height: 100%;
-    background: linear-gradient(
-        45deg, 
-        var(--primary-color) 25%, 
-        rgba(255,255,255,0.15) 25%, 
-        rgba(255,255,255,0.15) 50%, 
-        var(--primary-color) 50%, 
-        var(--primary-color) 75%, 
-        rgba(255,255,255,0.15) 75%, 
-        rgba(255,255,255,0.15)
-    );
-    background-size: 40px 40px;
+    background: var(--primary-color);
     width: 0%;
-    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    animation: move-stripes 1.5s linear infinite, bar-pulse 2s ease-in-out infinite;
-    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
-}
-
-@keyframes move-stripes {
-    from { background-position: 0 0; }
-    to { background-position: 40px 0; }
-}
-
-@keyframes bar-pulse {
-    0%, 100% { filter: brightness(1); }
-    50% { filter: brightness(1.2) saturate(1.2); }
-}
-
-.progress-info {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.9rem;
-    color: var(--text-muted);
+    transition: width 0.5s ease;
 }
 
 .success-view { text-align: center; }
@@ -659,102 +543,4 @@ header {
     border-color: var(--primary-color);
     box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
     outline: none;
-}
-
-/* Utility: Spinner */
-.spinner {
-    display: inline-block;
-    width: 0.8rem;
-    height: 0.8rem;
-    border: 2px solid rgba(255,255,255,0.2);
-    border-radius: 50%;
-    border-top-color: #fff;
-    animation: spin 0.8s linear infinite;
-    vertical-align: middle;
-    margin-right: 0.5rem;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* Animations for Table Rows */
-#auditTableBody tr {
-    animation: slideIn 0.3s ease-out forwards;
-    opacity: 0;
-}
-
-@keyframes slideIn {
-    from { opacity: 0; transform: translateX(-10px); }
-    to { opacity: 1; transform: translateX(0); }
-}
-
-/* Delays for staggered effect */
-#auditTableBody tr:nth-child(1) { animation-delay: 0.05s; }
-#auditTableBody tr:nth-child(2) { animation-delay: 0.1s; }
-#auditTableBody tr:nth-child(3) { animation-delay: 0.15s; }
-#auditTableBody tr:nth-child(4) { animation-delay: 0.2s; }
-#auditTableBody tr:nth-child(5) { animation-delay: 0.25s; }
-
-/* Scrollbar Styles */
-.library-table-wrapper::-webkit-scrollbar {
-    width: 6px;
-}
-.library-table-wrapper::-webkit-scrollbar-track {
-    background: transparent;
-}
-.library-table-wrapper::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 10px;
-}
-.library-table-wrapper::-webkit-scrollbar-thumb:hover {
-    background: var(--primary-color);
-}
-
-/* ADD APP MODAL SPECIFICS */
-#addAppModal .modal {
-    max-width: 500px;
-}
-
-#addAppForm .form-group {
-    margin-bottom: 1rem;
-}
-
-#addAppForm .input-field {
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 0.8rem;
-    color: white;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-#addAppForm .input-field:focus {
-    border-color: var(--primary-color);
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-#addAppBtn {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(15, 23, 42, 0.4));
-    border: 1px solid rgba(16, 185, 129, 0.2);
-}
-
-#addAppBtn:hover {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(15, 23, 42, 0.6));
-    border-color: #10b981;
-}
-
-#addAppBtn .tool-item-icon {
-    color: #10b981;
-}
-
-.rotating {
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
 }

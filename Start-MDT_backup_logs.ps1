@@ -20,11 +20,6 @@ $scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Get-Location }
 $installersPath = Join-Path $scriptRoot "installers"
 $port = 8070
 
-# Incrementar porto se estiver ocupado para permitir múltiplas instâncias na mesma rede ou terminal
-while ((Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue)) {
-    $port++
-}
-
 # Detetar IP Local (Priorizando a placa com rota predefinida / Gateway para evitar IPs virtuais)
 $Global:LocalIP = try {
     $route = Get-NetRoute -DestinationPrefix 0.0.0.0/0 -ErrorAction SilentlyContinue | Sort-Object RouteMetric | Select-Object -First 1
@@ -70,35 +65,14 @@ function Get-TargetStatus {
     return $Global:ActiveSessions[$Target]
 }
 
-# --- Segurança e Perfis ---
-$Global:AdminPassword = "Picis2020**!!"
-$Global:TechPassword  = "Picis2020!"
-
-# Dicionário de sessões: Token -> Role (admin ou tech)
-$Global:Sessions = [hashtable]::Synchronized(@{})
+# --- Segurança ---
+$Global:MDTPassword = "1234" # Pode alterar esta password manualmente aqui
+$Global:SessionToken = [guid]::NewGuid().ToString()
 
 function Test-Auth {
-    param($request, $RequiredRole)
-    $authHeader = $request.Headers["Authorization"]
-    if (-not $authHeader -or -not $authHeader.StartsWith("Bearer ")) { return $false }
-    
-    $token = $authHeader.Substring(7)
-    if (-not $Global:Sessions.ContainsKey($token)) { return $false }
-    
-    $userRole = $Global:Sessions[$token]
-    
-    # Se uma role for exigida, verificar se o utilizador a tem (admin tem acesso a tudo)
-    if ($RequiredRole -eq "admin" -and $userRole -ne "admin") { return $false }
-    
-    return $true
-}
-
-function Get-UserRole {
     param($request)
     $authHeader = $request.Headers["Authorization"]
-    if (-not $authHeader) { return "guest" }
-    $token = $authHeader.Substring(7)
-    return if ($Global:Sessions.ContainsKey($token)) { $Global:Sessions[$token] } else { "guest" }
+    return ($authHeader -eq "Bearer $Global:SessionToken")
 }
 
 # --- Auditoria ---
@@ -113,32 +87,20 @@ function Write-AuditLog {
         $appsString = if ($null -eq $Apps) { "N/A" } elseif ($Apps -is [array]) { $Apps -join ", " } else { $Apps }
         $entry = "[$timestamp] | ORIGEM: $RequesterIP | DESTINO: $TargetHost | ACAO: $Action | APPS: [$appsString] | STATUS: $Status"
         
-        # Tentativa de escrita com tratamento de erros robusto
+        # Retry loop para evitar bloqueio de ficheiro em escritas simultâneas
         $retryCount = 0
         $success = $false
-        $errorMsg = ""
-        
         while (-not $success -and $retryCount -lt 5) {
             try {
-                # Usar UTF8 explícito (sem BOM em PS7, com BOM em PS5)
-                # Para máxima compatibilidade com JS, forçamos o encoding
-                $utf8 = New-Object System.Text.UTF8Encoding($false)
-                [System.IO.File]::AppendAllLines($logFile, [string[]]@($entry), $utf8)
+                Add-Content -Path $logFile -Value $entry -ErrorAction Stop
                 $success = $true
             } catch {
-                $errorMsg = $_.Exception.Message
                 $retryCount++
-                Start-Sleep -Milliseconds (Get-Random -Minimum 200 -Maximum 600)
+                Start-Sleep -Milliseconds (Get-Random -Minimum 100 -Maximum 500)
             }
         }
-
-        if (-not $success) {
-            Write-Host "[!] FALHA CRITICA NA AUDITORIA: Nao foi possivel escrever no log ($logFile)." -ForegroundColor Red
-            Write-Host "[!] Motivo: $errorMsg" -ForegroundColor Yellow
-            Write-Host "[!] DICA: Verifique se o utilizador tem permissoes de escrita na partilha de rede." -ForegroundColor Cyan
-        }
     } catch {
-        Write-Host "[!] Erro estrutural ao preparar auditoria: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "[!] Erro ao gravar auditoria: $($_.Exception.Message)" -ForegroundColor Red
     }
 }
 
@@ -182,14 +144,15 @@ $ExcecutorBlock = {
     $UNCShare = "\\$LocalIP\MDT-Backend$"
 
     foreach ($app in $payload.apps) {
-        $appNum = $Status["completed_count"] + 1
-        $total = $Status["total_count"]
-        $Status["current_app"] = "[$appNum/$total] Instalando $($app.name)..."
-        $Status["percent"] = 0
+        $Status["current_app"] = "Instalando $($app.name)..."
+        
+        # Calcular percentagem base
+        $basePercent = [Math]::Round(($Status["completed_count"] / $Status["total_count"]) * 100)
+        $Status["percent"] = $basePercent + 2
 
         try {
             if ($payload.mode -eq "remote") {
-                # Ativar Winget no destino antes de começar
+                # Ativar Winget no destino antes de começar (mesmo para local installers, pode ser útil)
                 if ($cred) {
                     Invoke-Command -ComputerName $payload.targetHost -Credential $cred -ScriptBlock $WingetActivationScript -ErrorAction SilentlyContinue
                 } else {
@@ -200,14 +163,15 @@ $ExcecutorBlock = {
                     param($UNCFile, $ArgsParams, $AppType, $AppID)
                     
                     if ($AppType -eq "winget") {
+                        # Tentar localizar o winget no destino
                         $w = Get-Command winget.exe -ErrorAction SilentlyContinue
                         $exe = if ($w) { $w.Source } else { 
                             (Get-ChildItem "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller*_x64__*\winget.exe" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
                         }
                         if (-not $exe) { $exe = "winget" }
                         
-                        $override = if ($app.overrideArgs) { "--override `"$($app.overrideArgs)`"" } else { "" }
-                        $res = & $exe install --id $AppID --silent --accept-package-agreements --accept-source-agreements --disable-interactivity --force $override | Out-String
+                        # Executar instalacao winget
+                        $res = & $exe install --id $AppID --silent --accept-package-agreements --accept-source-agreements --source msstore | Out-String
                         if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 3010) {
                             throw "Falha na instalacao Winget no destino (Exit Code $LASTEXITCODE). Erro: $res"
                         }
@@ -235,7 +199,7 @@ $ExcecutorBlock = {
                 if ($app.type -ne "winget") {
                     $UNCPath = "$UNCShare\installers\$($app.localFile)"
                     if ($app.localFile -match "^[a-zA-Z]:" -or $app.localFile.StartsWith("\\")) {
-                        $UNCPath = $app.localFile
+                        $UNCPath = $app.localFile # Caminho absoluto ja fornecido
                     }
                     elseif ($app.localFile.StartsWith("installers\")) {
                         $UNCPath = "$UNCShare\$($app.localFile)"
@@ -249,35 +213,27 @@ $ExcecutorBlock = {
                 }
             } else {
                 # Modo Local
-                $fullPath = Join-Path $installersPath $app.localFile
-                if (-not (Test-Path $fullPath)) { $fullPath = "$scriptRoot\installers\$($app.localFile)" }
-                
                 if ($app.type -eq "winget") {
-                    $Status["percent"] = 10
                     $w = Get-Command winget.exe -ErrorAction SilentlyContinue
                     $exe = if ($w) { $w.Source } else { 
                         (Get-ChildItem "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller*_x64__*\winget.exe" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
                     }
                     if (-not $exe) { $exe = "winget" }
                     
-                    & $exe install --id $($app.id) --silent --accept-package-agreements --accept-source-agreements --disable-interactivity --force
+                    & $exe install --id $($app.id) --silent --accept-package-agreements --accept-source-agreements --source msstore
                     if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 3010) {
                         throw "Falha na instalacao Winget local (Exit Code $LASTEXITCODE)."
                     }
-                    $Status["percent"] = 100
                 } else {
+                    $fullPath = Join-Path $installersPath $app.localFile
+                    if (-not (Test-Path $fullPath)) {
+                            $fullPath = "$scriptRoot\installers\$($app.localFile)"
+                    }
+                    
                     if (Test-Path $fullPath) {
                         $workDir = Split-Path $fullPath
                         $extension = [System.IO.Path]::GetExtension($fullPath).ToLower()
-                        $fileNameWithoutExt = [System.IO.Path]::GetFileNameWithoutExtension($fullPath)
                         
-                        $Status["current_app"] = "[$appNum/$total] Limpeza: $($app.name)"
-                        $Status["percent"] = 5
-                        Stop-Process -Name "$fileNameWithoutExt*" -Force -ErrorAction SilentlyContinue
-                        
-                        $Status["current_app"] = "[$appNum/$total] A executar instalador..."
-                        $Status["percent"] = 15
-
                         if ($extension -eq ".msi") {
                             $sanitizedArgs = $app.silentArgs -replace "/S", "" -replace "/SILENT", "" -replace "/silent", "" -replace "/s", ""
                             $msiArgs = "/i `"$fullPath`" $($sanitizedArgs.Trim()) /qn /norestart ALLUSERS=1"
@@ -285,21 +241,25 @@ $ExcecutorBlock = {
                         } else {
                             $proc = Start-Process -FilePath $fullPath -ArgumentList $app.silentArgs -WorkingDirectory $workDir -Wait -NoNewWindow -PassThru
                         }
-                        
-                        $Status["current_app"] = "[$appNum/$total] Concluindo $($app.name)..."
-                        $Status["percent"] = 100
+
+                        $Status["current_app"] = "A verificar conclusão..."
+                        if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) {
+                            throw "Erro na instalação local (Código: $($proc.ExitCode))."
+                        }
                     } else {
                         throw "Instalador nao encontrado: $fullPath"
                     }
                 }
             }
-            $Status["completed_count"]++
+            $Status["percent"] = [Math]::Round((($Status["completed_count"] + 1) / $Status["total_count"]) * 100)
             Start-Sleep -Seconds 1
         } catch {
             $Status["error"] = "ERRO em $($app.name): $($_.Exception.Message)"
-            Start-Sleep -Seconds 3
+            Start-Sleep -Seconds 5
             $Status["error"] = $null
         }
+
+        $Status["completed_count"]++
     }
 
     $Status["finished"] = $true
@@ -611,18 +571,8 @@ try {
                 $body = $reader.ReadToEnd()
                 $payload = $body | ConvertFrom-Json
                 
-                $role = $null
-                $token = [guid]::NewGuid().ToString()
-
-                if ($payload.password -eq $Global:AdminPassword) {
-                    $role = "admin"
-                } elseif ($payload.password -eq $Global:TechPassword) {
-                    $role = "tech"
-                }
-
-                if ($role) {
-                    $Global:Sessions[$token] = $role
-                    $resData = @{ status = "success"; token = $token; role = $role } | ConvertTo-Json
+                if ($payload.password -eq $Global:MDTPassword) {
+                    $resData = @{ status = "success"; token = $Global:SessionToken } | ConvertTo-Json
                 } else {
                     $resData = @{ status = "error"; message = "Password incorreta" } | ConvertTo-Json
                     $response.StatusCode = 401
@@ -640,7 +590,7 @@ try {
                 $response.ContentType = "application/json"
                 $response.OutputStream.Write($buffer, 0, $buffer.Length)
             }
-            # API: Protegida por Token (Base)
+            # API: Protegida por Token
             elseif ($path.StartsWith("/api/")) {
                 if (-not (Test-Auth -request $request)) {
                     $resData = @{ status = "error"; message = "Não autorizado" } | ConvertTo-Json
@@ -653,7 +603,6 @@ try {
                     # --- Endpoints Protegidos ---
                     
                     if ($path -eq "/api/shutdown" -and $request.HttpMethod -eq "POST") {
-                        if (-not (Test-Auth $request "admin")) { $response.StatusCode = 403; return }
                         $resData = @{ status = "shutting_down" } | ConvertTo-Json
                         $buffer = [System.Text.Encoding]::UTF8.GetBytes($resData)
                         $response.ContentType = "application/json"
@@ -699,12 +648,15 @@ try {
                         $body = $reader.ReadToEnd()
                         $payload = $body | ConvertFrom-Json
 
-                        # No novo modelo MDT-Direct, o "Local" e' o destino prioritario
-                        $target = "local"
-                        $TargetStatus = Get-TargetStatus -Target "localhost"
+                        if ($null -eq $payload.mode) {
+                            $payload = @{ mode = "local"; apps = $payload }
+                        }
+
+                        $target = if ($payload.mode -eq "remote") { $payload.targetHost } else { "localhost" }
+                        $TargetStatus = Get-TargetStatus -Target $target
 
                         if ($TargetStatus["is_running"]) {
-                            $resData = @{ status = "busy"; message = "Ja existe uma instalacao em curso." } | ConvertTo-Json
+                            $resData = @{ status = "busy"; message = "Ja existe uma instalacao em curso para este destino ($target)." } | ConvertTo-Json
                         } else {
                             $TargetStatus["auto_shutdown"] = [bool]$payload.autoShutdown
 
@@ -714,21 +666,19 @@ try {
                             $newRunspace.SessionStateProxy.SetVariable("WingetActivationScript", $WingetActivationScript)
 
                             try {
-                                # Auditoria Centralizada na Rede
+                                # Auditoria Inicial
                                 $clientIP = $request.RemoteEndPoint.Address.ToString()
                                 $appNames = if ($payload.apps) { $payload.apps | ForEach-Object { $_.name } } else { "N/A" }
-                                Write-AuditLog -RequesterIP $clientIP -TargetHost $env:COMPUTERNAME -Action "MDT-Direct Local Install" -Apps $appNames
-                            } catch {}
+                                Write-AuditLog -RequesterIP $clientIP -TargetHost $target -Action "Instalação" -Apps $appNames
+                            } catch {
+                                Write-Host "[!] Falha na auditoria: $($_.Exception.Message)" -ForegroundColor Yellow
+                            }
 
-                            # Forcar modo local no executor
-                            if ($null -eq $payload.mode) { $payload = @{ mode = "local"; apps = $payload } }
-                            else { $payload.mode = "local" }
-                            
                             $ps = [powershell]::Create().AddScript($ExcecutorBlock).AddArgument($payload).AddArgument($installersPath).AddArgument($TargetStatus).AddArgument($Global:LocalIP)
                             $ps.Runspace = $newRunspace
                             $ps.BeginInvoke()
 
-                            $resData = @{ status = "started"; target = $env:COMPUTERNAME } | ConvertTo-Json
+                            $resData = @{ status = "started"; target = $target } | ConvertTo-Json
                         }
                         $buffer = [System.Text.Encoding]::UTF8.GetBytes($resData)
                         $response.ContentType = "application/json"
@@ -780,7 +730,6 @@ try {
                         $response.OutputStream.Write($buffer, 0, $buffer.Length)
                     }
                     elseif ($path -eq "/api/library" -and $request.HttpMethod -eq "GET") {
-                        if (-not (Test-Auth $request "admin")) { $response.StatusCode = 403; return }
                         $appsData = Get-Content -Path (Join-Path $scriptRoot "apps.json") -Raw | ConvertFrom-Json
                         $results = New-Object System.Collections.Generic.List[PSObject]
                         foreach ($app in $appsData.apps) {
@@ -802,7 +751,6 @@ try {
                         $response.OutputStream.Write($buffer, 0, $buffer.Length)
                     }
                     elseif ($path -eq "/api/library/check" -and $request.HttpMethod -eq "POST") {
-                        if (-not (Test-Auth $request "admin")) { $response.StatusCode = 403; return }
                         $reader = New-Object System.IO.StreamReader($request.InputStream)
                         $body = $reader.ReadToEnd()
                         $payload = $body | ConvertFrom-Json
@@ -820,7 +768,6 @@ try {
                         $response.OutputStream.Write($buffer, 0, $buffer.Length)
                     }
                     elseif ($path -eq "/api/library/sync" -and $request.HttpMethod -eq "POST") {
-                        if (-not (Test-Auth $request "admin")) { $response.StatusCode = 403; return }
                         $reader = New-Object System.IO.StreamReader($request.InputStream)
                         $body = $reader.ReadToEnd()
                         $payload = $body | ConvertFrom-Json
@@ -842,81 +789,7 @@ try {
                             $resData = @{ status = "error"; message = "Nao foi possivel descarregar o instalador." } | ConvertTo-Json
                         }
                         $buffer = [System.Text.Encoding]::UTF8.GetBytes($resData)
-                        $response.ContentType = "application/json; charset=utf-8"
-                        $response.OutputStream.Write($buffer, 0, $buffer.Length)
-                    }
-                    elseif ($path -eq "/api/audit" -and $request.HttpMethod -eq "GET") {
-                        if (-not (Test-Auth $request "admin")) { $response.StatusCode = 403; return }
-                        try {
-                            $auditDir = Join-Path $scriptRoot "auditoria"
-                            if ($request.QueryString["date"]) {
-                                $date = $request.QueryString["date"]
-                                $logFile = Join-Path $auditDir "log_$date.txt"
-                                if (Test-Path $logFile) {
-                                    # Forçar conversão para array de strings simples para evitar metadados indesejados no JSON
-                                    $lines = [string[]](Get-Content $logFile -Encoding UTF8)
-                                    $resData = @{ status = "success"; date = $date; content = $lines } | ConvertTo-Json -Depth 2 -Compress
-                                } else {
-                                    $resData = @{ status = "error"; message = "Ficheiro de log nao encontrado: log_$date.txt" } | ConvertTo-Json
-                                }
-                            } else {
-                                if (Test-Path $auditDir) {
-                                    $files = Get-ChildItem $auditDir -Filter "log_*.txt" | Sort-Object LastWriteTime -Descending
-                                    $dates = $files | ForEach-Object { $_.Name -replace "log_", "" -replace ".txt", "" }
-                                    $resData = @{ status = "success"; dates = $dates } | ConvertTo-Json
-                                } else {
-                                    $resData = @{ status = "success"; dates = @() } | ConvertTo-Json
-                                }
-                            }
-                        } catch {
-                            $resData = @{ status = "error"; message = "Erro na Auditoria: $($_.Exception.Message)" } | ConvertTo-Json
-                        }
-                        $buffer = [System.Text.Encoding]::UTF8.GetBytes($resData)
-                        $response.ContentType = "application/json; charset=utf-8"
-                        $response.OutputStream.Write($buffer, 0, $buffer.Length)
-                    }
-                    elseif ($path -eq "/api/all-installers" -and $request.HttpMethod -eq "GET") {
-                        if (-not (Test-Auth $request "admin")) { $response.StatusCode = 403; return }
-                        try {
-                            $installersDir = Join-Path $scriptRoot "installers"
-                            if (-not (Test-Path $installersDir)) {
-                                throw "Pasta 'installers' nao encontrada."
-                            }
-                            $files = Get-ChildItem -Path $installersDir -Recurse | Where-Object { $_.FullName -ne $installersDir } | ForEach-Object { 
-                                try {
-                                    $rel = $_.FullName.Substring($installersDir.Length + 1)
-                                    if ($rel) { $rel }
-                                } catch { $null }
-                            } | Sort-Object
-                            $resData = @{ status = "success"; files = @($files) } | ConvertTo-Json -Depth 5 -Compress
-                        } catch {
-                            $resData = @{ status = "error"; message = "Erro ao listar instaladores: $($_.Exception.Message)" } | ConvertTo-Json
-                        }
-                        $buffer = [System.Text.Encoding]::UTF8.GetBytes($resData)
-                        $response.ContentType = "application/json; charset=utf-8"
-                        $response.OutputStream.Write($buffer, 0, $buffer.Length)
-                    }
-                    elseif ($path -eq "/api/apps/add" -and $request.HttpMethod -eq "POST") {
-                        if (-not (Test-Auth $request "admin")) { $response.StatusCode = 403; return }
-                        try {
-                            $reader = New-Object System.IO.StreamReader($request.InputStream)
-                            $body = $reader.ReadToEnd()
-                            $newApp = $body | ConvertFrom-Json
-                            
-                            $appsJsonPath = Join-Path $scriptRoot "apps.json"
-                            if (-not (Test-Path $appsJsonPath)) { throw "apps.json nao encontrado." }
-                            
-                            $appsData = Get-Content $appsJsonPath -Raw | ConvertFrom-Json
-                            $appsData.apps += $newApp
-                            $jsonData = $appsData | ConvertTo-Json -Depth 20
-                            $jsonData | Set-Content -Path $appsJsonPath -Encoding UTF8
-                            
-                            $resData = @{ status = "success" } | ConvertTo-Json
-                        } catch {
-                            $resData = @{ status = "error"; message = "Erro ao adicionar app: $($_.Exception.Message)" } | ConvertTo-Json
-                        }
-                        $buffer = [System.Text.Encoding]::UTF8.GetBytes($resData)
-                        $response.ContentType = "application/json; charset=utf-8"
+                        $response.ContentType = "application/json"
                         $response.OutputStream.Write($buffer, 0, $buffer.Length)
                     }
                 }

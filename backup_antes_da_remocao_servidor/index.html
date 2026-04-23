@@ -35,11 +35,16 @@
         <main>
                 <!-- Ferramentas de Sistema Compactas -->
                 <div class="compact-toolbar">
-                    <div class="tool-item action-btn" id="upgradeAllBtn" title="Executar atualização de todas as apps via Winget">
+                    <div class="tool-item" id="upgradeAllBtn">
                         <span class="tool-item-icon">🔄</span>
                         <div class="tool-item-text">
-                            <h4>Atualizar Tudo</h4>
+                            <h4>Upgrade All</h4>
                             <span>Winget Auto-Update</span>
+                        </div>
+                        <div class="tool-item-divider"></div>
+                        <div class="mode-toggle-compact" id="upgradeModeToggle">
+                            <button class="toggle-btn-mini active" data-mode="local">ESTE PC</button>
+                            <button class="toggle-btn-mini" data-mode="remote">REDE</button>
                         </div>
                     </div>
 
@@ -94,6 +99,10 @@
                 <span id="selectedCount">0</span> apps selecionados
             </div>
             <div class="selection-actions">
+                <div class="mode-toggle" id="installModeToggle" style="margin-right: 1rem;">
+                    <button class="toggle-btn active" data-mode="local">ESTE PC</button>
+                    <button class="toggle-btn" data-mode="remote">REDE</button>
+                </div>
                 <label class="auto-shutdown-label">
                     <input type="checkbox" id="autoShutdownCheck">
                     <span>Encerrar ao terminar</span>
